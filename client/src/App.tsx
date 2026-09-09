@@ -54,7 +54,6 @@ function MainTimeline() {
       return;
     }
 
-    // Reset branch filter to ALL on repo change to prevent invalid branch queries
     setFilterOptions({
       branch: 'ALL',
       skip: 0,
@@ -179,8 +178,8 @@ function MainTimeline() {
           isLoading={isLoading}
         />
 
-        {/* Timeline Scroll Area */}
-        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
+        {/* Timeline Scroll Area - top-0 aligned so sticky date headers work perfectly */}
+        <main className="flex-1 overflow-y-auto px-4 md:px-8 pb-16">
           <div className="max-w-4xl mx-auto">
             {/* Error banner */}
             <AnimatePresence>
@@ -189,7 +188,7 @@ function MainTimeline() {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="mb-6 flex items-center gap-2 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 text-xs shadow-xs"
+                  className="mt-4 mb-6 flex items-center gap-2.5 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 text-xs shadow-xs"
                 >
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{error}</span>
@@ -202,22 +201,22 @@ function MainTimeline() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="flex flex-col items-center justify-center py-24 text-center"
+                className="flex flex-col items-center justify-center py-28 text-center"
               >
-                <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4 shadow-xs">
-                  <FolderPlus className="w-8 h-8" />
+                <div className="w-20 h-20 rounded-3xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-5 shadow-sm">
+                  <FolderPlus className="w-10 h-10" />
                 </div>
-                <h2 className="text-base font-bold mb-1.5 text-slate-800 dark:text-slate-100">
+                <h2 className="text-lg font-bold mb-2 text-slate-800 dark:text-slate-100">
                   欢迎使用 Git Timeline
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-[#8b949e] max-w-sm mb-6 leading-relaxed">
+                <p className="text-xs text-slate-500 dark:text-[#8b949e] max-w-sm mb-7 leading-relaxed">
                   未选择或尚未添加任何本地 Git 仓库。你可以手动添加项目路径，或扫描父目录快速批量导入。
                 </p>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3.5">
                   <motion.button
                     whileTap={{ scale: 0.96 }}
                     onClick={() => setIsAddModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors"
                   >
                     <FolderPlus className="w-4 h-4" />
                     添加本地仓库
@@ -225,7 +224,7 @@ function MainTimeline() {
                   <motion.button
                     whileTap={{ scale: 0.96 }}
                     onClick={() => setIsScanModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-xl border border-slate-300 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#21262d] transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-full border border-slate-300 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#21262d] transition-colors shadow-xs"
                   >
                     <FolderSearch className="w-4 h-4 text-indigo-500" />
                     扫描父级目录
@@ -240,17 +239,17 @@ function MainTimeline() {
                 {[1, 2, 3].map(n => (
                   <div
                     key={n}
-                    className="rounded-2xl border border-slate-200 dark:border-[#30363d] bg-white/60 dark:bg-[#161b22]/60 p-5 space-y-3 animate-pulse"
+                    className="rounded-3xl border border-slate-200/80 dark:border-[#30363d] bg-white/70 dark:bg-[#161b22]/70 p-6 space-y-3.5 animate-pulse"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-[#30363d]" />
-                        <div className="w-24 h-3 bg-slate-200 dark:bg-[#30363d] rounded" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-[#30363d]" />
+                        <div className="w-28 h-3.5 bg-slate-200 dark:bg-[#30363d] rounded-full" />
                       </div>
-                      <div className="w-16 h-4 bg-slate-200 dark:bg-[#30363d] rounded" />
+                      <div className="w-20 h-5 bg-slate-200 dark:bg-[#30363d] rounded-full" />
                     </div>
-                    <div className="w-3/4 h-4 bg-slate-200 dark:bg-[#30363d] rounded" />
-                    <div className="w-1/2 h-3 bg-slate-200 dark:bg-[#30363d] rounded" />
+                    <div className="w-3/4 h-4.5 bg-slate-200 dark:bg-[#30363d] rounded-xl" />
+                    <div className="w-1/2 h-3.5 bg-slate-200 dark:bg-[#30363d] rounded-xl" />
                   </div>
                 ))}
               </div>
@@ -261,12 +260,12 @@ function MainTimeline() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="flex flex-col items-center justify-center py-24 text-center"
+                className="flex flex-col items-center justify-center py-28 text-center"
               >
-                <div className="p-3 rounded-2xl bg-slate-100 dark:bg-[#21262d] text-slate-400 mb-3">
-                  <Inbox className="w-8 h-8" />
+                <div className="p-4 rounded-3xl bg-slate-100 dark:bg-[#21262d] text-slate-400 mb-3.5">
+                  <Inbox className="w-9 h-9" />
                 </div>
-                <h3 className="text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">
+                <h3 className="text-sm font-bold mb-1.5 text-slate-700 dark:text-slate-300">
                   没有找到匹配的提交记录
                 </h3>
                 <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
@@ -277,14 +276,14 @@ function MainTimeline() {
 
             {/* Timeline Stream */}
             {activeRepo && dateGroups.length > 0 && (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {dateGroups.map(group => (
                   <div key={group.dateKey} className="relative">
                     <DateGroupHeader
                       dateLabel={group.dateLabel}
                       commitCount={group.commits.length}
                     />
-                    <div className="mt-2">
+                    <div className="mt-1">
                       {group.commits.map(commit => (
                         <CommitCard
                           key={commit.hash}
@@ -297,9 +296,9 @@ function MainTimeline() {
                 ))}
 
                 {/* Infinite Scroll Sentinel */}
-                <div ref={observerTarget} className="py-4 flex justify-center">
+                <div ref={observerTarget} className="pt-4 pb-8 flex justify-center">
                   {isLoadingMore ? (
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
                       <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
                       <span>正在增量加载更多提交记录...</span>
                     </div>
@@ -307,13 +306,13 @@ function MainTimeline() {
                     <motion.button
                       whileTap={{ scale: 0.96 }}
                       onClick={() => loadCommits(true)}
-                      className="flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] hover:bg-slate-100 dark:hover:bg-[#21262d] text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs transition-all"
+                      className="flex items-center gap-2 px-6 py-2.5 rounded-full border border-slate-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] hover:bg-slate-100 dark:hover:bg-[#21262d] text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs transition-all"
                     >
                       <GitCommit className="w-4 h-4 text-indigo-500" />
                       <span>加载更多提交记录</span>
                     </motion.button>
                   ) : (
-                    <div className="text-[11px] text-slate-400 py-4 select-none">
+                    <div className="text-[11px] text-slate-400 py-4 select-none font-medium">
                       已展示全部提交记录
                     </div>
                   )}
