@@ -1,0 +1,16 @@
+{
+  "name": "git-timeline-viewer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A modern, responsive Git commit history & timeline visualizer with interactive diffs and multi-repo workspaces",
+  "scripts": {
+    "dev:server": "pnpm --filter git-timeline-server dev",
+    "dev:client": "pnpm --filter git-timeline-client dev",
+    "dev": "concurrently --kill-others-on-fail -n \"SERVER,CLIENT\" -c \"blue,green\" \"pnpm --filter git-timeline-server dev\" \"pnpm --filter git-timeline-client dev\"",
+    "build": "pnpm --filter git-timeline-client build && pnpm --filter git-timeline-server build",
+    "start": "pnpm --filter git-timeline-server start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

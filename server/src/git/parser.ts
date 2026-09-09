@@ -1,0 +1,262 @@
+import { runGitCommand } from './cli.js';
+import { CommitItem, CommitFileChange, BranchItem, TagItem, CommitFilterOptions } from '../types.js';
+
+const RECORD_SEP = '\x1e';
+const FIELD_SEP = '\x1f';
+
+export async function parseCommits(
+  repoPath: string,
+  options: CommitFilterOptions = {}
+): Promise<{ commits: CommitItem[]; hasMore: boolean }> {
+  const limit = options.limit || 30;
+  const skip = options.skip || 0;
+
+  // We request limit + 1 to check if there are more commits
+  const fetchCount = limit + 1;
+
+  const args: string[] = [
+    'log',
+    `--max-count=${fetchCount}`,
+    `--skip=${skip}`,
+    `--pretty=format:${RECORD_SEP}%H${FIELD_SEP}%h${FIELD_SEP}%an${FIELD_SEP}%ae${FIELD_SEP}%aI${FIELD_SEP}%cn${FIELD_SEP}%ce${FIELD_SEP}%cI${FIELD_SEP}%s${FIELD_SEP}%b${FIELD_SEP}%P${FIELD_SEP}%D`,
+    '--numstat'
+  ];
+
+  if (options.branch && options.branch !== 'ALL') {
+    args.push(options.branch);
+  } else {
+    // Show all branches
+    args.push('--all');
+  }
+
+  if (options.search && options.search.trim()) {
+    const s = options.search.trim();
+    // Search both grep message and author
+    args.push(`--grep=${s}`, `-i`);
+  }
+
+  if (options.since) {
+    args.push(`--since=${options.since}`);
+  }
+  if (options.until) {
+    args.push(`--until=${options.until}`);
+  }
+
+  if (options.path && options.path.trim()) {
+    args.push('--', options.path.trim());
+  }
+
+  const output = await runGitCommand(repoPath, args);
+  if (!output || !output.trim()) {
+    return { commits: [], hasMore: false };
+  }
+
+  const rawChunks = output.split(RECORD_SEP).filter(chunk => chunk.trim().length > 0);
+  const commits: CommitItem[] = [];
+
+  for (const chunk of rawChunks) {
+    // Find the end of the commit metadata line (before numstat lines)
+    const firstNewline = chunk.indexOf('\n');
+    let metaPart: string;
+    let numstatPart = '';
+
+    if (firstNewline === -1) {
+      metaPart = chunk;
+    } else {
+      metaPart = chunk.substring(0, firstNewline);
+      numstatPart = chunk.substring(firstNewline + 1).trim();
+    }
+
+    const fields = metaPart.split(FIELD_SEP);
+    if (fields.length < 10) continue;
+
+    const [
+      hash,
+      shortHash,
+      authorName,
+      authorEmail,
+      authorDate,
+      committerName,
+      committerEmail,
+      committerDate,
+      subject,
+      body,
+      parentsStr,
+      refsStr
+    ] = fields;
+
+    const parents = parentsStr ? parentsStr.trim().split(/\s+/).filter(Boolean) : [];
+    const refs = refsStr
+      ? refsStr
+          .split(',')
+          .map(r => r.trim())
+          .filter(Boolean)
+      : [];
+
+    let totalAdditions = 0;
+    let totalDeletions = 0;
+    const fileChanges: CommitFileChange[] = [];
+
+    if (numstatPart) {
+      const lines = numstatPart.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        const parts = trimmed.split('\t');
+        if (parts.length >= 3) {
+          const addStr = parts[0];
+          const delStr = parts[1];
+          const filePath = parts.slice(2).join('\t');
+
+          const adds = addStr === '-' ? 0 : parseInt(addStr, 10) || 0;
+          const dels = delStr === '-' ? 0 : parseInt(delStr, 10) || 0;
+          totalAdditions += adds;
+          totalDeletions += dels;
+
+          fileChanges.push({
+            path: filePath,
+            additions: adds,
+            deletions: dels,
+            status: 'modified' // will be refined if detailed diff requested
+          });
+        }
+      }
+    }
+
+    commits.push({
+      hash,
+      shortHash: shortHash || hash.substring(0, 7),
+      authorName,
+      authorEmail,
+      authorDate,
+      committerName,
+      committerEmail,
+      committerDate,
+      subject,
+      body: body ? body.trim() : '',
+      parents,
+      refs,
+      stats: {
+        filesChanged: fileChanges.length,
+        additions: totalAdditions,
+        deletions: totalDeletions
+      },
+      files: fileChanges
+    });
+  }
+
+  const hasMore = commits.length > limit;
+  const resultCommits = hasMore ? commits.slice(0, limit) : commits;
+
+  return { commits: resultCommits, hasMore };
+}
+
+export async function getCommitDiff(
+  repoPath: string,
+  hash: string
+): Promise<{ diff: string; files: CommitFileChange[] }> {
+  // Get raw unified patch
+  const diff = await runGitCommand(repoPath, ['show', '--patch', '--unified=3', hash]);
+
+  // Get exact name status and stats
+  const statusOutput = await runGitCommand(repoPath, [
+    'show',
+    '--numstat',
+    '--name-status',
+    '--pretty=format:',
+    hash
+  ]);
+
+  const files: CommitFileChange[] = [];
+  const statusMap = new Map<string, { status: CommitFileChange['status']; oldPath?: string }>();
+  const numstatMap = new Map<string, { adds: number; dels: number }>();
+
+  const lines = statusOutput.split('\n').map(l => l.trim()).filter(Boolean);
+  for (const line of lines) {
+    const parts = line.split('\t');
+    if (parts.length === 2 && /^[ACDMRTUXB][0-9]*$/.test(parts[0])) {
+      const statusCode = parts[0][0];
+      const filePath = parts[1];
+      let status: CommitFileChange['status'] = 'modified';
+      if (statusCode === 'A') status = 'added';
+      else if (statusCode === 'D') status = 'deleted';
+      else if (statusCode === 'M') status = 'modified';
+      else if (statusCode === 'C') status = 'copied';
+      statusMap.set(filePath, { status });
+    } else if (parts.length === 3 && parts[0].startsWith('R')) {
+      // Renamed: R100 oldPath newPath
+      statusMap.set(parts[2], { status: 'renamed', oldPath: parts[1] });
+    } else if (parts.length >= 3 && /^[0-9-]+$/.test(parts[0])) {
+      // Numstat line: <add> <del> <path>
+      const adds = parts[0] === '-' ? 0 : parseInt(parts[0], 10) || 0;
+      const dels = parts[1] === '-' ? 0 : parseInt(parts[1], 10) || 0;
+      const filePath = parts.slice(2).join('\t');
+      numstatMap.set(filePath, { adds, dels });
+    }
+  }
+
+  // Combine
+  const allPaths = new Set([...statusMap.keys(), ...numstatMap.keys()]);
+  for (const p of allPaths) {
+    const s = statusMap.get(p);
+    const n = numstatMap.get(p) || { adds: 0, dels: 0 };
+    files.push({
+      path: p,
+      oldPath: s?.oldPath,
+      additions: n.adds,
+      deletions: n.dels,
+      status: s?.status || 'modified'
+    });
+  }
+
+  return { diff, files };
+}
+
+export async function getBranches(repoPath: string): Promise<BranchItem[]> {
+  const output = await runGitCommand(repoPath, [
+    'branch',
+    '-a',
+    '--format=%(HEAD)|%(refname:short)|%(objectname:short)|%(refname)'
+  ]);
+
+  const branches: BranchItem[] = [];
+  const lines = output.split('\n').map(l => l.trim()).filter(Boolean);
+
+  for (const line of lines) {
+    const [head, shortRef, commitHash, fullRef] = line.split('|');
+    const isCurrent = head.trim() === '*';
+    const isRemote = fullRef ? fullRef.startsWith('refs/remotes/') : false;
+
+    // Filter out origin/HEAD -> origin/main symref
+    if (shortRef.endsWith('/HEAD')) continue;
+
+    branches.push({
+      name: shortRef,
+      current: isCurrent,
+      isRemote,
+      commitHash: commitHash || ''
+    });
+  }
+
+  return branches;
+}
+
+export async function getTags(repoPath: string): Promise<TagItem[]> {
+  try {
+    const output = await runGitCommand(repoPath, [
+      'tag',
+      '-l',
+      '--format=%(refname:short)|%(objectname:short)'
+    ]);
+    return output
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+      .map(line => {
+        const [name, commitHash] = line.split('|');
+        return { name, commitHash };
+      });
+  } catch {
+    return [];
+  }
+}

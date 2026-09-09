@@ -1,0 +1,22 @@
+{
+  "name": "git-timeline-server",
+  "version": "1.0.0",
+  "description": "Backend service for Git Timeline Viewer",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "node --experimental-strip-types --watch src/index.ts",
+    "build": "tsc",
+    "start": "node --experimental-strip-types src/index.ts"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.13.5",
+    "typescript": "^5.7.3"
+  }
+}
