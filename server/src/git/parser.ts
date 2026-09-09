@@ -11,7 +11,6 @@ export async function parseCommits(
   const limit = options.limit || 30;
   const skip = options.skip || 0;
 
-  // We request limit + 1 to check if there are more commits
   const fetchCount = limit + 1;
 
   const args: string[] = [
@@ -25,21 +24,19 @@ export async function parseCommits(
   if (options.branch && options.branch !== 'ALL') {
     args.push(options.branch);
   } else {
-    // Show all branches
     args.push('--all');
   }
 
   if (options.search && options.search.trim()) {
     const s = options.search.trim();
-    // Search both grep message and author
     args.push(`--grep=${s}`, `-i`);
   }
 
-  if (options.since) {
-    args.push(`--since=${options.since}`);
+  if (options.since && options.since.trim()) {
+    args.push(`--since=${options.since.trim()}`);
   }
-  if (options.until) {
-    args.push(`--until=${options.until}`);
+  if (options.until && options.until.trim()) {
+    args.push(`--until=${options.until.trim()}`);
   }
 
   if (options.path && options.path.trim()) {
@@ -55,7 +52,6 @@ export async function parseCommits(
   const commits: CommitItem[] = [];
 
   for (const chunk of rawChunks) {
-    // Find the end of the commit metadata line (before numstat lines)
     const firstNewline = chunk.indexOf('\n');
     let metaPart: string;
     let numstatPart = '';
@@ -117,7 +113,7 @@ export async function parseCommits(
             path: filePath,
             additions: adds,
             deletions: dels,
-            status: 'modified' // will be refined if detailed diff requested
+            status: 'modified'
           });
         }
       }
@@ -155,17 +151,34 @@ export async function getCommitDiff(
   repoPath: string,
   hash: string
 ): Promise<{ diff: string; files: CommitFileChange[] }> {
-  // Get raw unified patch
-  const diff = await runGitCommand(repoPath, ['show', '--patch', '--unified=3', hash]);
+  // Support both normal commits and merge commits
+  let diff = '';
+  try {
+    diff = await runGitCommand(repoPath, ['show', '--patch', '--unified=3', '-m', '--first-parent', hash]);
+  } catch {
+    diff = await runGitCommand(repoPath, ['show', '--patch', '--unified=3', hash]);
+  }
 
-  // Get exact name status and stats
-  const statusOutput = await runGitCommand(repoPath, [
-    'show',
-    '--numstat',
-    '--name-status',
-    '--pretty=format:',
-    hash
-  ]);
+  let statusOutput = '';
+  try {
+    statusOutput = await runGitCommand(repoPath, [
+      'show',
+      '--numstat',
+      '--name-status',
+      '--pretty=format:',
+      '-m',
+      '--first-parent',
+      hash
+    ]);
+  } catch {
+    statusOutput = await runGitCommand(repoPath, [
+      'show',
+      '--numstat',
+      '--name-status',
+      '--pretty=format:',
+      hash
+    ]);
+  }
 
   const files: CommitFileChange[] = [];
   const statusMap = new Map<string, { status: CommitFileChange['status']; oldPath?: string }>();
@@ -184,10 +197,8 @@ export async function getCommitDiff(
       else if (statusCode === 'C') status = 'copied';
       statusMap.set(filePath, { status });
     } else if (parts.length === 3 && parts[0].startsWith('R')) {
-      // Renamed: R100 oldPath newPath
       statusMap.set(parts[2], { status: 'renamed', oldPath: parts[1] });
     } else if (parts.length >= 3 && /^[0-9-]+$/.test(parts[0])) {
-      // Numstat line: <add> <del> <path>
       const adds = parts[0] === '-' ? 0 : parseInt(parts[0], 10) || 0;
       const dels = parts[1] === '-' ? 0 : parseInt(parts[1], 10) || 0;
       const filePath = parts.slice(2).join('\t');
@@ -195,7 +206,6 @@ export async function getCommitDiff(
     }
   }
 
-  // Combine
   const allPaths = new Set([...statusMap.keys(), ...numstatMap.keys()]);
   for (const p of allPaths) {
     const s = statusMap.get(p);
@@ -227,7 +237,6 @@ export async function getBranches(repoPath: string): Promise<BranchItem[]> {
     const isCurrent = head.trim() === '*';
     const isRemote = fullRef ? fullRef.startsWith('refs/remotes/') : false;
 
-    // Filter out origin/HEAD -> origin/main symref
     if (shortRef.endsWith('/HEAD')) continue;
 
     branches.push({

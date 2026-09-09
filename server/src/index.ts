@@ -5,7 +5,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { reposRouter } from './routes/repos.js';
 import { commitsRouter } from './routes/commits.js';
-import { isValidGitRepo } from './git/cli.js';
+import { isValidGitRepo, runGitCommand } from './git/cli.js';
 import { loadConfig, saveConfig, generateRepoId } from './store/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -45,20 +45,35 @@ async function initCurrentDirectory() {
       const config = await loadConfig();
       const id = generateRepoId(cwd);
       const exists = config.repositories.find(r => r.id === id);
+
+      let currentBranch = 'HEAD';
+      let lastCommitDate: string | undefined;
+      try {
+        const branchOut = await runGitCommand(cwd, ['branch', '--show-current']);
+        currentBranch = branchOut.trim() || 'HEAD';
+        const lastCommit = await runGitCommand(cwd, ['log', '-1', '--format=%aI']);
+        lastCommitDate = lastCommit.trim() || undefined;
+      } catch {}
+
       if (!exists) {
         config.repositories.push({
           id,
           name: path.basename(cwd),
           path: cwd,
-          currentBranch: 'main',
+          currentBranch,
+          lastCommitDate,
           isStarred: false
         });
+      } else {
+        exists.currentBranch = currentBranch;
+        exists.lastCommitDate = lastCommitDate;
       }
+
       if (!config.activeRepoId) {
         config.activeRepoId = id;
       }
       await saveConfig(config);
-      console.log(`[Git Timeline] Auto-registered current git repo: ${cwd}`);
+      console.log(`[Git Timeline] Auto-registered git repo: ${cwd} (${currentBranch})`);
     }
   } catch (err) {
     console.warn('[Git Timeline] Could not auto-register current directory:', err);

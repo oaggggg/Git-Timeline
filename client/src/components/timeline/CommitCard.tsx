@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CommitItem } from '../../types';
 import { CommitDiffView } from '../diff/CommitDiffView';
+import { useToast } from '../../context/ToastContext';
 import { 
   GitCommit, 
   GitBranch, 
@@ -19,11 +21,10 @@ import { zhCN } from 'date-fns/locale';
 interface CommitCardProps {
   repoId: string;
   commit: CommitItem;
-  isFirstInGroup?: boolean;
-  isLastInGroup?: boolean;
 }
 
 export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
+  const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
   const [isDiffExpanded, setIsDiffExpanded] = useState(false);
   const [isBodyExpanded, setIsBodyExpanded] = useState(false);
@@ -32,10 +33,10 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
     e.stopPropagation();
     navigator.clipboard.writeText(commit.hash);
     setCopied(true);
+    showToast(`已复制 Commit SHA: ${commit.shortHash}`, 'success');
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Generate a consistent color based on author name
   const avatarBg = getAvatarColor(commit.authorName);
   const initials = commit.authorName.slice(0, 2).toUpperCase();
 
@@ -44,16 +45,23 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
   const exactTime = format(commitDate, 'yyyy-MM-dd HH:mm:ss');
 
   return (
-    <div className="relative pl-7 pb-6 group">
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      className="relative pl-7 pb-6 group"
+    >
       {/* Vertical Timeline Track Line */}
       <div className="absolute left-2.5 top-3 bottom-0 w-0.5 bg-slate-200 dark:bg-[#30363d] group-last:hidden" />
 
       {/* Timeline Node Dot */}
-      <div className="absolute left-1 top-3 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-[#0d1117] bg-indigo-500 shadow-xs ring-2 ring-indigo-500/20 z-10" />
+      <div className="absolute left-1 top-3 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-[#0d1117] bg-indigo-500 shadow-xs ring-2 ring-indigo-500/20 z-10 transition-transform group-hover:scale-110" />
 
       {/* Card Body */}
       <div
-        className={`rounded-xl border transition-all duration-200 ${
+        className={`rounded-2xl border transition-all duration-200 ${
           isDiffExpanded
             ? 'bg-white dark:bg-[#161b22] border-indigo-500/40 dark:border-indigo-500/50 shadow-md ring-1 ring-indigo-500/10'
             : 'bg-white dark:bg-[#161b22] border-slate-200 dark:border-[#30363d] hover:border-slate-300 dark:hover:border-slate-600 shadow-xs'
@@ -65,7 +73,7 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
             {/* Author */}
             <div className="flex items-center gap-2.5">
               <div
-                className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-xs shrink-0"
+                className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-xs shrink-0 select-none"
                 style={{ backgroundColor: avatarBg }}
               >
                 {initials}
@@ -85,30 +93,30 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
 
             {/* Right: Hash & Branch/Tag Badges */}
             <div className="flex flex-wrap items-center gap-1.5">
-              {/* Ref badges (branches / tags) */}
               {commit.refs.map((ref, idx) => {
                 const isTag = ref.includes('tag:');
                 const cleanRef = ref.replace('tag:', '').trim();
                 return (
                   <span
                     key={idx}
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium select-none ${
                       isTag
-                        ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
                         : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
                     }`}
                   >
-                    {isTag ? <Tag className="w-2.5 h-2.5" /> : <GitBranch className="w-2.5 h-2.5" />}
-                    {cleanRef}
+                    {isTag ? <Tag className="w-2.5 h-2.5 shrink-0" /> : <GitBranch className="w-2.5 h-2.5 shrink-0" />}
+                    <span>{cleanRef}</span>
                   </span>
                 );
               })}
 
               {/* Commit Hash Badge */}
-              <button
+              <motion.button
+                whileTap={{ scale: 0.95 }}
                 onClick={copyHash}
                 title={`点击复制完整 SHA: ${commit.hash}`}
-                className="flex items-center gap-1 px-2 py-0.5 rounded font-mono text-[11px] font-medium bg-slate-100 hover:bg-slate-200 dark:bg-[#21262d] dark:hover:bg-[#30363d] text-slate-600 dark:text-slate-300 transition-colors"
+                className="flex items-center gap-1 px-2 py-0.5 rounded-lg font-mono text-[11px] font-medium bg-slate-100 hover:bg-slate-200 dark:bg-[#21262d] dark:hover:bg-[#30363d] text-slate-600 dark:text-slate-300 transition-colors"
               >
                 {copied ? (
                   <>
@@ -122,16 +130,16 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
                     <Copy className="w-2.5 h-2.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </>
                 )}
-              </button>
+              </motion.button>
             </div>
           </div>
 
           {/* Commit Subject / Title */}
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100 break-words">
+          <div className="text-sm font-medium text-slate-900 dark:text-slate-100 break-words leading-snug">
             {commit.subject}
           </div>
 
-          {/* Commit Body Description (if present) */}
+          {/* Commit Body Description */}
           {commit.body && (
             <div className="mt-2 text-xs text-slate-600 dark:text-[#8b949e]">
               <div
@@ -144,7 +152,7 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
               {commit.body.split('\n').length > 2 && (
                 <button
                   onClick={() => setIsBodyExpanded(!isBodyExpanded)}
-                  className="mt-1 text-indigo-500 hover:text-indigo-600 text-[11px] flex items-center gap-0.5"
+                  className="mt-1 text-indigo-500 hover:text-indigo-600 text-[11px] flex items-center gap-0.5 font-medium transition-colors"
                 >
                   {isBodyExpanded ? (
                     <>收起说明 <ChevronUp className="w-3 h-3" /></>
@@ -159,7 +167,7 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
           {/* Footer stats and Toggle Diff Button */}
           <div className="mt-3 pt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 dark:border-[#30363d]/60 text-xs text-slate-500 dark:text-[#8b949e]">
             {/* Stats */}
-            <div className="flex items-center gap-2 text-[11px]">
+            <div className="flex items-center gap-2.5 text-[11px]">
               <span className="flex items-center gap-1">
                 <Files className="w-3 h-3 text-slate-400" />
                 {commit.stats.filesChanged} 个文件
@@ -179,11 +187,12 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
             </div>
 
             {/* Toggle Diff Action */}
-            <button
+            <motion.button
+              whileTap={{ scale: 0.96 }}
               onClick={() => setIsDiffExpanded(!isDiffExpanded)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
                 isDiffExpanded
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-indigo-600 text-white shadow-xs'
                   : 'bg-slate-100 hover:bg-slate-200 dark:bg-[#21262d] dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200'
               }`}
             >
@@ -198,20 +207,21 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
                   <ChevronDown className="w-3.5 h-3.5" />
                 </>
               )}
-            </button>
+            </motion.button>
           </div>
 
           {/* Inline Expanded Diff View */}
-          {isDiffExpanded && (
-            <CommitDiffView repoId={repoId} commit={commit} />
-          )}
+          <AnimatePresence>
+            {isDiffExpanded && (
+              <CommitDiffView repoId={repoId} commit={commit} />
+            )}
+          </AnimatePresence>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
-// Generate colorful avatar background
 function getAvatarColor(name: string): string {
   const colors = [
     '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
