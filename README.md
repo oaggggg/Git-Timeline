@@ -1,102 +1,192 @@
-# Git Timeline Viewer (Git-Timeline)
+﻿# Git Timeline Viewer (Git-Timeline)
 
-让 Git 提交更简单更美观。一款专注于本地 Git 提交记录查看与分析的现代化 Web 工具。采用直观的时间线卡片瀑布流设计，集成多仓库工作区管理、交互式代码 Diff 审查与多维度复合筛选，提供流畅的动态动效交互体验。
+让 Git 提交更简单更美观。一款专注于本地 Git 历史可视化查看、代码审查与高频 Git 操作的现代化全栈 Web 应用。基于 React 18、Vite、Express 与 TypeScript 构建，采用直观优美的时间轴瀑布流设计，无缝集成多仓库管理、内联 Diff 比对、代码作者全景、历史回退（Reset/Revert）与 GitHub 发布协作。
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![React](https://img.shields.io/badge/React-18.x-61DAFB.svg)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.x-646CFF.svg)](https://vitejs.dev/)
+[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.x-38B2AC.svg)](https://tailwindcss.com/)
+[![Express](https://img.shields.io/badge/Express-4.x-000000.svg)](https://expressjs.com/)
+
+---
+
+## 目录
+
+- [核心特性](#核心特性)
+  - [1. 时间轴瀑布流与提交卡片](#1-时间轴瀑布流与提交卡片)
+  - [2. 代码变动审查器 (Diff Inspector)](#2-代码变动审查器-diff-inspector)
+  - [3. Git 历史回退与操作中心 (Rollback & Revert)](#3-git-历史回退与操作中心-rollback--revert)
+  - [4. 工作区管理与手动提交代码](#4-工作区管理与手动提交代码)
+  - [5. GitHub 远端同步与 PR 创建](#5-github-远端同步与-pr-创建)
+  - [6. 提交贡献者全景展示与快捷搜索](#6-提交贡献者全景展示与快捷搜索)
+  - [7. 系统级三态动态滑动主题](#7-系统级三态动态滑动主题)
+- [快速上手](#快速上手)
+  - [环境准备](#环境准备)
+  - [一键启动 (生产模式)](#一键启动-生产模式)
+  - [开发模式启动 (HMR 热重载)](#开发模式启动-hmr-热重载)
+- [快捷键指南](#快捷键指南)
+- [技术架构](#技术架构)
+  - [目录结构说明](#目录结构说明)
+  - [核心数据流与设计规范](#核心数据流与设计规范)
+- [开源许可证](#开源许可证)
 
 ---
 
 ## 核心特性
 
-- **时间线瀑布流卡片 (Timeline Stream)**
-  - 按提交日期自动聚类（“今天”、“昨天”、“某年某月某日”）。
-  - 直观呈现作者头像徽标、姓名、相对提交时间及精确时间浮窗。
-  - 支持 Commit SHA 一键快速复制与分支/Tag 徽章标记。
-  - 统计代码变更度量（文件变动数、+新增行数、-删除行数）。
+### 1. 时间轴瀑布流与提交卡片
+- **智能日期聚合**：按提交产生日期自动归类聚类为吸顶粘性标签（“今天”、“昨天”、“2026年09月10日”），附带单日提交总频次统计。
+- **高质感卡片排版**：采用 3XL 大圆角卡片，呈现提交标题、详细描述展开折叠、提交者头像色彩散列（Hash Avatar）与姓名。
+- **精确时间戳胶囊**：兼顾相对时间（如“3分钟前”）与标准化精确时间戳（如“2026年09月10日 11:09”），采用数字等宽排版避免文字抖动挤压。
+- **版本里程碑标签 (Release Tags)**：自动关联解析 Git 标签（如 `v1.0.0`、`v1.1.0`），以醒目的翠绿色发光圆角徽章突出展示，并在主界面提供一键筛选。
+- **SHA 快捷操作**：支持一键复制 7 位短哈希与 40 位完整 Commit SHA。
 
-- **交互式代码 Diff 审查 (Diff Inspector)**
-  - 卡片内联即时展开，零页面跳转。
-  - 变动文件列表导航（带 A/M/D/R 变动类型标识与变动行数）。
-  - 支持 Unified（单列内联）与 Split（双栏左右并排）模式自由切换，滑动指示条平滑过渡。
-  - 代码高亮、变动行背景色区分与行号精准对齐。
-  - 支持提交内部变动文件快速搜索过滤、一键全部折叠/展开。
-  - 智能检测二进制文件，友好提示无法文本比对。
+### 2. 代码变动审查器 (Diff Inspector)
+- **内联零跳转体验**：无需离开时间轴即可平滑展开代码 Diff 区域，支持悬浮预取（Hover Prefetching）技术，毫秒级即时响应。
+- **双模式自由切换**：支持 Unified（单栏内联）与 Split（双栏左右并排）模式，指示滑块平滑弹性过渡。
+- **变动度量统计**：卡片直观显示变更文件总数、新增行数（+）、删除行数（-），Diff 面板内标明变动类型（新增 A、修改 M、删除 D、重命名 R）。
+- **文件过滤与折叠控制**：内置变动文件路径即时搜索，支持一键全部折叠与全部展开。
+- **大文件与二进制保护**：对非文本二进制资源进行保护性提示，规避页面卡顿。
 
-- **多仓库工作区管理 (Workspace Sidebar)**
-  - 侧边栏管理多个本地 Git 仓库，随时无缝切换。
-  - 支持直接输入绝对路径添加本地仓库。
-  - 支持扫描父级目录自动递归发现所有子 Git 仓库并批量导入。
-  - 支持收藏置顶（Star）常用项目。
-  - 本地自动持久化存储记录（`~/.git-timeline-viewer.json`）。
+### 3. Git 历史回退与操作中心 (Rollback & Revert)
+- **回退分支至此提交 (Git Reset)**：
+  - **保留工作区修改（--mixed 默认推荐）**：将当前分支重置到目标节点，修改内容保留在工作目录（未暂存），随时可继续调整或重新打包提交。
+  - **保留至暂存区（--soft 安全模式）**：将当前分支重置到目标节点，所有修改内容保留在暂存区（Staged），专用于合并与重塑提交记录。
+  - **彻底舍弃后续变动（--hard 高危模式）**：分支指针强制重置，目标节点之后的所有变动彻底销毁，提供二次高危确认拦截机制。
+- **撤销历史提交 (Git Revert)**：针对历史提交生成安全的反向抵消提交（`git revert --no-edit <hash>`），不篡改历史分支拓扑，适合多人协作公共分支。
+- **从此处检出新分支 (Branch from Commit)**：以任意历史提交为基准锚点，直接创建并切换至新开发特性分支。
+- **撤回最后一次提交 (Undo Last Commit)**：顶部一键撤销最新提交（`git reset --soft HEAD~1`），平滑将变动回滚至暂存区重审。
+- **放弃工作区所有变动 (Discard Changes)**：级联执行 `git reset HEAD`、`git checkout -- .` 及 `git clean -fd`，一键还原工作区至绝对干净状态。
 
-- **多维度复合过滤与检索**
-  - **分支切换**：支持选择特定分支，或一键查看 `--all` 全部分支合并拓扑。
-  - **实时全局搜索**：支持按提交信息、详细说明、作者名、Commit SHA 关键字检索。
-  - **时间范围筛选**：快速筛选“最近 7 天”、“最近 30 天”、“最近 90 天”。
-  - **文件路径反查**：输入特定文件或文件夹路径（如 `src/components`），仅查看修改过该路径的提交历史。
+### 4. 工作区管理与手动提交代码
+- **可视提交控制台**：实时监控工作目录与暂存区，按状态区分修改（M）、新增（A）、删除（D）与未跟踪文件（?）。
+- **细粒度多选暂存**：支持全选、反选与勾选特定文件进行精准提交。
+- **规范化提交前缀 (Conventional Commits)**：提供 `feat:`、`fix:`、`docs:`、`style:`、`refactor:`、`perf:`、`chore:` 快捷按钮，点击自动补全或切换前缀。
+- **提交与推送双模驱动**：支持单步本地提交，或一键“提交并直接推送至远端”。
+- **工作区暂存支持 (Stash)**：支持一键暂存未完结变动（`git stash`）与快速恢复变动（`git stash pop`）。
 
-- **动态动效组件 (Dynamic Motion Components)**
-  - 基于 Framer Motion 实现的平滑布局过渡与卡片进出场动效。
-  - 全局滑动吐司通知反馈（Toast Notification）。
-  - 弹窗蒙层平滑渐变与阻尼缩放弹性动画。
-  - 支持滚动自动触底加载（Infinite Scroll）。
+### 5. GitHub 远端同步与 PR 创建
+- **智能远程源检测**：本地未关联远程库时，提供直观的 GitHub 仓库配置引导；已关联时提供一键推送与网页直达。
+- **分支与标签创建**：可视化创建本地/远程分支，以及带说明的版本标签（Tag）。
+- **一键创建 Pull Request**：自动解析当前分支与上游主干，一键直达 GitHub PR 创建界面，降低协同流转成本。
 
-- **现代双色主题风格**
-  - 提供优雅清爽的 Light / Dark 深浅双色主题，一键切换。
-  - 界面风格参考 GitHub & Linear 极简高质感设计，全界面采用矢量图标。
+### 6. 提交贡献者全景展示与快捷搜索
+- **贡献者全景看板 (Authors Showcase)**：底层采用 `git shortlog -sne --all` 解析全库所有贡献者，呈现每位作者的提交频次、专属头像缩写与邮箱提示。
+- **单选与组合过滤**：点击任意作者卡片，时间轴立即按该作者提交进行过滤，再次点击或点击“全部作者”平滑还原。
+- **展开式轻量搜索**：平时收拢为极简圆形图标，按下 `/` 键或点击图标顺滑展开并自动聚焦光标；按 `Escape` 键或点清除键立即收回并自动重置搜索结果。
+
+### 7. 系统级三态动态滑动主题
+- **浅色 (Light) / 跟随系统 (System) / 深色 (Dark)** 三态自由切换。
+- 基于 Framer Motion 物理弹簧阻尼模型打造，活动滑块在选项间丝滑滑动，兼顾白天护眼与暗光沉浸体验。
 
 ---
 
-## 快速启动
+## 快速上手
 
-### 方式一：一键启动（推荐）
+### 环境准备
 
-本项目已完成前端打包与后端编译，直接运行即可：
+- **Node.js**: 建议 `18.0.0` 或更高版本
+- **Git**: 建议 `2.30.0` 或更高版本（已配置环境变量）
+- **包管理器**: `pnpm` (推荐) 或 `npm`
+
+### 一键启动 (生产模式)
+
+项目已预置全量编译脚本，克隆后可直接启动：
 
 ```bash
-# 启动本地服务（默认端口 4321）
+# 1. 克隆本仓库
+git clone https://github.com/oaggggg/Git-Timeline.git
+cd Git-Timeline
+
+# 2. 安装项目依赖
+pnpm install
+
+# 3. 构建并启动服务 (默认端口 4321)
+pnpm build
 pnpm start
-# 或使用 npm
-npm start
 ```
 
-启动后在浏览器打开：
-http://localhost:4321
+启动完成后，在浏览器访问：
+[http://localhost:4321](http://localhost:4321)
 
-### 方式二：开发模式启动 (HMR 实时热重载)
+### 开发模式启动 (HMR 热重载)
+
+如需针对前端或后端进行二次开发或定制：
 
 ```bash
-# 启动 Vite 前端 + 后端开发模式
+# 启动前后端联合开发模式
 pnpm dev
 ```
 
-前端开发地址：`http://localhost:5173` (API 请求自动代理至 `4321` 端口)
+- 前端开发服务器：`http://localhost:5173` (带有 Vite 模块热替换与 API 代理)
+- 后端服务接口：`http://localhost:4321`
+
+---
+
+## 快捷键指南
+
+| 按键 / 组合 | 功能作用 | 交互说明 |
+| :--- | :--- | :--- |
+| `/` | 展开全局搜索框 | 在非输入控件下按下，自动平滑展开搜索栏并聚焦输入框 |
+| `Escape` | 关闭弹窗 / 收起搜索 | 一键收拢搜索框并清空关键词，或关闭当前任意活动弹窗与下拉菜单 |
+| 点击遮罩空白处 | 快速关闭浮层 | 所有弹窗与气泡菜单均支持点击背景自动退出 |
 
 ---
 
 ## 技术架构
 
+### 目录结构说明
+
 ```
-d:/fanzhongli/porject5/
-├── server/                    # 后端服务 (Node.js + Express + TypeScript)
-│   ├── src/
-│   │   ├── index.ts           # 服务入口 & 静态托管
-│   │   ├── git/
-│   │   │   ├── cli.ts         # Git CLI 安全封装 (UTF-8 路径解析)
-│   │   │   ├── parser.ts      # git log / diff / branch 解析器
-│   │   │   └── scanner.ts     # 本地 Git 仓库递归扫描
-│   │   ├── store/
-│   │   │   └── config.ts      # 本地工作区持久化存储
-│   │   └── routes/            # REST API 路由
-│   └── dist/                  # 编译后产物
-├── client/                    # 前端项目 (React 18 + Vite + Tailwind CSS + Framer Motion)
+Git-Timeline/
+├── client/                     # 前端工程 (React 18 + Vite + Tailwind CSS)
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── layout/        # Sidebar, Header
-│   │   │   ├── timeline/      # CommitCard, DateGroupHeader
-│   │   │   ├── diff/          # CommitDiffView (Unified / Split 动态过渡)
-│   │   │   └── modals/        # AddRepoModal, ScanRepoModal
-│   │   ├── context/           # RepoContext, ThemeContext, ToastContext
-│   │   ├── services/          # API 请求层
-│   │   └── utils/             # 日期聚合与格式化
-│   └── dist/                  # 前端静态打包产物
-└── package.json               # 统一脚本与依赖管理
+│   │   │   ├── diff/           # 代码 Diff 比对面板 (Unified / Split 模式)
+│   │   │   ├── layout/         # 顶部导航 Header、主题切换器 ThemeSlider
+│   │   │   ├── modals/         # 提交、回退、发布、PR 等全部 Portal 弹窗
+│   │   │   ├── sidebar/        # 左侧多仓库工作区侧边栏
+│   │   │   └── timeline/       # 提交卡片 CommitCard、作者全景 AuthorsShowcase
+│   │   ├── context/            # 仓库状态 RepoContext、主题与 Toast 上下文
+│   │   ├── services/           # 后端 REST API 封装
+│   │   └── types/              # TypeScript 共享契约与类型定义
+│   └── dist/                   # 前端生产打包静态资源
+├── server/                     # 后端工程 (Node.js + Express + TypeScript)
+│   ├── src/
+│   │   ├── git/                # Git CLI 管道安全封装与原子解析引擎
+│   │   ├── routes/             # Git 提交、文件 Diff、版本操作 API
+│   │   ├── store/              # 本地仓库持久化配置存储
+│   │   └── index.ts            # 服务主入口与静态资源服务
+│   └── dist/                   # 后端编译产物
+├── LICENSE                     # MIT 开源授权协议
+└── README.md                   # 项目工程文档与使用指南
+```
+
+### 核心数据流与设计规范
+
+1. **零外部重依赖**：纯净封装原生 Git CLI 管道命令，无需编译绑定笨重的 C++ libgit2，启动轻快，跨平台兼容 Windows、macOS 与 Linux。
+2. **React Portal 悬浮隔离**：所有弹窗组件通过 `createPortal` 统一挂载至 `document.body` 根节点，彻底避免 CSS `backdrop-filter` 与 `transform` 对浮层坐标产生的包含块裁剪缺陷。
+3. **安全自适应排版**：气泡菜单与操作面板具备智能空间感知机制，自动规避滚动容器边界裁切，实现视口内完整渲染。
+
+---
+
+## 开源许可证
+
+本项目基于 [MIT License](LICENSE) 协议开源。
+
+```
+MIT License
+
+Copyright (c) 2026 oaggggg
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 ```
