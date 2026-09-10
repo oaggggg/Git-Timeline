@@ -9,7 +9,7 @@ interface RepoContextType {
   error: string | null;
   selectRepo: (id: string) => Promise<void>;
   refreshRepos: () => Promise<void>;
-  addNewRepo: (path: string, name?: string) => Promise<RepoInfo>;
+  addNewRepo: (path: string, name?: string, autoInit?: boolean) => Promise<RepoInfo>;
   openRepoDialog: () => Promise<RepoInfo | null>;
   removeRepo: (id: string) => Promise<void>;
   toggleStar: (id: string) => Promise<void>;
@@ -23,35 +23,34 @@ export const RepoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoadingRepos, setIsLoadingRepos] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshRepos = useCallback(async () => {
+  const refreshRepos = async () => {
     try {
-      setIsLoadingRepos(true);
-      setError(null);
       const data = await fetchRepos();
       setRepositories(data.repositories);
-      setActiveRepoId(data.activeRepoId || (data.repositories[0]?.id ?? null));
+      setActiveRepoId(data.activeRepoId);
+      setError(null);
     } catch (err: any) {
-      setError(err.message || 'Failed to load repositories');
+      setError(err.message || '加载仓库列表失败');
     } finally {
       setIsLoadingRepos(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     refreshRepos();
-  }, [refreshRepos]);
+  }, []);
 
   const selectRepo = async (id: string) => {
     try {
-      setActiveRepoId(id);
-      await setActiveRepo(id);
-    } catch (err) {
-      console.error('Failed to set active repo:', err);
+      const data = await setActiveRepo(id);
+      setActiveRepoId(data.activeRepoId);
+    } catch (err: any) {
+      setError(err.message || '切换仓库失败');
     }
   };
 
-  const addNewRepo = async (path: string, name?: string): Promise<RepoInfo> => {
-    const data = await addRepo(path, name);
+  const addNewRepo = async (path: string, name?: string, autoInit?: boolean): Promise<RepoInfo> => {
+    const data = await addRepo(path, name, autoInit);
     setRepositories(prev => {
       const filtered = prev.filter(r => r.id !== data.repo.id);
       return [...filtered, data.repo];

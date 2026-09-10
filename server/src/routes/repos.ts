@@ -55,15 +55,28 @@ reposRouter.get('/', async (req, res) => {
 // POST /api/repos - Add a repository by local path
 reposRouter.post('/', async (req, res) => {
   try {
-    const { repoPath, name } = req.body;
+    const { repoPath, name, autoInit } = req.body;
     if (!repoPath) {
-      return res.status(400).json({ error: 'repoPath is required' });
+      return res.status(400).json({ error: '请提供仓库路径 (repoPath)' });
     }
 
     const resolved = path.resolve(repoPath);
-    const valid = await isValidGitRepo(resolved);
+    if (!fs.existsSync(resolved)) {
+      return res.status(400).json({ error: `指定路径不存在：${resolved}` });
+    }
+
+    let valid = await isValidGitRepo(resolved);
+    if (!valid && autoInit) {
+      await runGitCommand(resolved, ['init']);
+      valid = await isValidGitRepo(resolved);
+    }
+
     if (!valid) {
-      return res.status(400).json({ error: `Not a valid Git repository: ${resolved}` });
+      return res.status(400).json({ 
+        error: `目标文件夹不是有效的 Git 仓库（未找到 .git 目录）：${resolved}`,
+        canInit: true,
+        path: resolved
+      });
     }
 
     const config = await loadConfig();

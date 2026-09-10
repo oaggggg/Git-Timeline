@@ -1,0 +1,128 @@
+.repo-sidebar {
+  --sidebar-duration: 240ms;
+  --sidebar-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  width: 280px;
+  transition: width var(--sidebar-duration) var(--sidebar-ease);
+}
+
+.repo-sidebar[data-collapsed="true"] {
+  width: 68px;
+}
+
+/* Keep icons and text at their natural size while the sidebar clips its contents. */
+.repo-sidebar .sidebar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+}
+
+.repo-sidebar .sidebar-detail {
+  flex-shrink: 0;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 140ms ease 80ms, visibility 0s;
+}
+
+.repo-sidebar[data-collapsed="true"] .sidebar-detail {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 70ms ease, visibility 0s 70ms;
+}
+
+.repo-sidebar .sidebar-brand {
+  position: absolute;
+  left: 14px;
+  right: 64px;
+  overflow: hidden;
+}
+
+.repo-sidebar .sidebar-toggle svg {
+  transition: transform var(--sidebar-duration) var(--sidebar-ease);
+}
+
+.repo-sidebar[data-collapsed="true"] .sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+
+.repo-sidebar .sidebar-actions {
+  padding: 12px 13px 12px 14px;
+}
+
+.repo-sidebar .sidebar-search {
+  width: 252px;
+}
+
+.repo-sidebar .sidebar-fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  transition: grid-template-rows var(--sidebar-duration) var(--sidebar-ease),
+    opacity 140ms ease 80ms, visibility 0s;
+}
+
+.repo-sidebar .sidebar-fold > div {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.repo-sidebar[data-collapsed="true"] .sidebar-fold {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition: grid-template-rows var(--sidebar-duration) var(--sidebar-ease),
+    opacity 70ms ease, visibility 0s var(--sidebar-duration);
+}
+
+.repo-sidebar .sidebar-repositories,
+.repo-sidebar .sidebar-authors {
+  padding-left: 14px;
+  padding-right: 7px;
+  scrollbar-gutter: stable;
+}
+
+.repo-sidebar .sidebar-repo-summary {
+  width: 212px;
+  padding: 0 8px;
+}
+
+.repo-sidebar .sidebar-author-heading,
+.repo-sidebar .sidebar-author-loading {
+  padding-left: 14px;
+}
+
+.repo-sidebar .sidebar-author-summary {
+  width: 212px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.repo-sidebar .sidebar-authors {
+  max-height: min(192px, 30vh);
+}
+
+.repo-sidebar .sidebar-empty {
+  width: 252px;
+}
+
+.repo-sidebar .sidebar-group-heading {
+  padding-left: 8px;
+}
+
+.repo-sidebar button:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .repo-sidebar,
+  .repo-sidebar .sidebar-detail,
+  .repo-sidebar .sidebar-fold,
+  .repo-sidebar .sidebar-toggle svg {
+    transition: none;
+  }
+}

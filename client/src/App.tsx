@@ -41,11 +41,10 @@ function MainTimeline() {
   const [error, setError] = useState<string | null>(null);
   const [isOpeningRepo, setIsOpeningRepo] = useState(false);
 
-  // Directly open system native folder picker
   const handleOpenNativeRepo = async () => {
     if (isOpeningRepo) return;
     setIsOpeningRepo(true);
-    showToast('正在呼出系统文件夹选择器，请在窗口中选择...', 'info');
+    showToast('正在打开系统文件夹选择窗口...', 'info');
     try {
       const repo = await openRepoDialog();
       if (repo) {
@@ -59,6 +58,8 @@ function MainTimeline() {
       setIsOpeningRepo(false);
     }
   };
+
+
   const observerTarget = useRef<HTMLDivElement | null>(null);
 
   const loadAuthors = useCallback(async (repoId: string) => {
@@ -287,14 +288,14 @@ function MainTimeline() {
                   whileTap={{ scale: 0.96 }}
                   onClick={handleOpenNativeRepo}
                   disabled={isOpeningRepo}
-                  className="flex items-center gap-2 px-6 py-2.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-75 text-white shadow-xs transition-colors"
+                  className="flex items-center gap-2 px-6 py-2.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-75 text-white shadow-xs transition-colors cursor-pointer"
                 >
                   {isOpeningRepo ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <FolderOpen className="w-4 h-4" />
                   )}
-                  <span>{isOpeningRepo ? '请在系统窗口中选择...' : '打开本地仓库'}</span>
+                  <span>{isOpeningRepo ? '正在打开系统选择器...' : '打开本地仓库'}</span>
                 </motion.button>
               </motion.div>
             )}

@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { getAvatarColor, getInitials } from '../../utils/avatar';
+import { AuthorAvatar } from '../common/AuthorAvatar';
 
 interface CommitCardProps {
   repoId: string;
@@ -32,7 +32,7 @@ interface CommitCardProps {
   onRefresh?: () => void;
 }
 
-export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefresh }) => {
+export const CommitCard: React.FC<CommitCardProps> = React.memo(({ repoId, commit, onRefresh }) => {
   const { showToast, dismissToast } = useToast();
   const [copied, setCopied] = useState(false);
   const [isDiffExpanded, setIsDiffExpanded] = useState(false);
@@ -110,9 +110,6 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const avatarBg = getAvatarColor(commit.authorName);
-  const initials = getInitials(commit.authorName);
-
   const commitDate = new Date(commit.authorDate);
   const relativeTime = formatDistanceToNow(commitDate, { addSuffix: true, locale: zhCN });
   const fullDateTime = format(commitDate, 'yyyy年MM月dd日 HH:mm');
@@ -134,14 +131,12 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
 
   return (
     <motion.div
-      layout="position"
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ 
         duration: 0.2, 
-        ease: 'easeOut',
-        layout: { duration: 0.35, ease: [0.16, 1, 0.3, 1] }
+        ease: 'easeOut'
       }}
       style={{ zIndex: showActionMenu ? 60 : 1 }}
       className={`relative pl-8 pb-6 group ${showActionMenu ? 'z-50' : 'z-0'}`}
@@ -170,12 +165,12 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
             {/* Author & Specific Date Time */}
             <div className="flex items-center gap-2.5 flex-wrap">
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white shadow-xs shrink-0 select-none ring-2 ring-white dark:ring-[#161b22]"
-                style={{ backgroundColor: avatarBg }}
-              >
-                {initials}
-              </div>
+              <AuthorAvatar
+                name={commit.authorName}
+                email={commit.authorEmail}
+                size="md"
+                className="ring-2 ring-white dark:ring-[#161b22]"
+              />
               <div className="flex items-center gap-2 text-xs flex-wrap">
                 <span className="font-semibold text-slate-800 dark:text-slate-200">
                   {commit.authorName}
@@ -470,4 +465,4 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
       />
     </motion.div>
   );
-};
+});

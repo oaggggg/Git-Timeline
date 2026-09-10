@@ -5,9 +5,10 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "node --experimental-strip-types --watch src/index.ts",
+    "dev": "pnpm build && concurrently --kill-others-on-fail \"tsc --watch --preserveWatchOutput\" \"node --watch dist/index.js\"",
     "build": "tsc",
-    "start": "node --experimental-strip-types src/index.ts"
+    "start": "node dist/index.js",
+    "test": "pnpm build && node --test test/*.test.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

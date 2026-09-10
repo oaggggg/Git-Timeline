@@ -30,11 +30,11 @@ export async function fetchRepos(): Promise<{ repositories: RepoInfo[]; activeRe
   return handleResponse(res);
 }
 
-export async function addRepo(repoPath: string, name?: string): Promise<{ repo: RepoInfo; activeRepoId: string }> {
+export async function addRepo(repoPath: string, name?: string, autoInit?: boolean): Promise<{ repo: RepoInfo; activeRepoId: string }> {
   const res = await fetch(`${BASE_URL}/repos`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ repoPath, name })
+    body: JSON.stringify({ repoPath, name, autoInit })
   });
   return handleResponse(res);
 }

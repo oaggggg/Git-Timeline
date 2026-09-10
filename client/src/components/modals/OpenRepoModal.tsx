@@ -15,7 +15,8 @@ import {
   HardDrive,
   GitBranch,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  AlertCircle
 } from 'lucide-react';
 
 interface OpenRepoModalProps {
@@ -73,20 +74,38 @@ export const OpenRepoModal: React.FC<OpenRepoModalProps> = ({ isOpen, onClose })
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  const handleOpenDirectory = async (pathString: string) => {
+  const [canInitPath, setCanInitPath] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
+
+  const handleOpenDirectory = async (pathString: string, autoInit = false) => {
     const clean = pathString.trim();
     if (!clean) return;
     setIsSubmitting(true);
     setError(null);
+    setCanInitPath(null);
     try {
-      const repo = await addNewRepo(clean);
-      showToast(`已成功打开仓库: ${repo.name}`, 'success');
+      const repo = await addNewRepo(clean, undefined, autoInit);
+      showToast(autoInit ? `已初始化并成功打开仓库: ${repo.name}` : `已成功打开仓库: ${repo.name}`, 'success');
       onClose();
     } catch (err: any) {
-      setError(err.message || '路径不是有效的 Git 仓库（缺少 .git 目录）');
-      showToast(err.message || '路径不是有效的 Git 仓库', 'error');
+      const msg = err.message || '路径不是有效的 Git 仓库（缺少 .git 目录）';
+      setError(msg);
+      if (msg.includes('缺少 .git') || msg.includes('未找到 .git') || msg.includes('Not a valid Git repository')) {
+        setCanInitPath(clean);
+      }
+      showToast(msg, 'error');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleInitAndOpen = async () => {
+    if (!canInitPath || isInitializing) return;
+    setIsInitializing(true);
+    try {
+      await handleOpenDirectory(canInitPath, true);
+    } finally {
+      setIsInitializing(false);
     }
   };
 
@@ -351,10 +370,34 @@ export const OpenRepoModal: React.FC<OpenRepoModalProps> = ({ isOpen, onClose })
                   </motion.button>
                 </div>
 
-                {/* Error Banner */}
+                {/* Error Banner with Optional Git Init Action */}
                 {error && (
-                  <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs border border-rose-200 dark:border-rose-900/50">
-                    {error}
+                  <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs border border-rose-200 dark:border-rose-900/50 space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span className="font-medium">{error}</span>
+                    </div>
+                    {canInitPath && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-rose-200/60 dark:border-rose-900/40">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                          该目录尚未建立版本库，是否直接在此初始化？
+                        </span>
+                        <motion.button
+                          type="button"
+                          whileTap={{ scale: 0.95 }}
+                          onClick={handleInitAndOpen}
+                          disabled={isInitializing}
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white shadow-xs transition-colors cursor-pointer"
+                        >
+                          {isInitializing ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <GitBranch className="w-3.5 h-3.5" />
+                          )}
+                          <span>立即初始化并打开 (git init)</span>
+                        </motion.button>
+                      </div>
+                    )}
                   </div>
                 )}
               </form>
