@@ -1,13 +1,14 @@
-﻿# Git-Timeline
+# Git-Timeline
 
-让 Git 提交更简单更美观。一款专注于本地 Git 历史可视化查看、代码审查与高频 Git 操作的现代化全栈 Web 应用。基于 React 18、Vite、Express 与 TypeScript 构建，采用直观优美的时间轴瀑布流设计，无缝集成多仓库管理、内联 Diff 比对、代码作者全景、历史回退（Reset/Revert）与 GitHub 发布协作。
+让 Git 提交更简单更美观。一款专注于本地 Git 历史可视化查看、代码审查与高频 Git 操作的现代化全栈 Web 应用。基于 React 19、Vite 6、Express 4 与 TypeScript 5 构建，采用直观优美的时间轴瀑布流设计，无缝集成多仓库管理、内联 Diff 比对、代码作者全景、历史回退（Reset/Revert）、GitHub 发布协作、游戏化新手引导与时间范围筛选。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![React](https://img.shields.io/badge/React-18.x-61DAFB.svg)](https://react.dev/)
+[![React](https://img.shields.io/badge/React-19.x-61DAFB.svg)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.x-646CFF.svg)](https://vitejs.dev/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.x-38B2AC.svg)](https://tailwindcss.com/)
 [![Express](https://img.shields.io/badge/Express-4.x-000000.svg)](https://expressjs.com/)
+[![Framer Motion](https://img.shields.io/badge/Framer_Motion-12.x-E91E63.svg)](https://www.framer.com/motion/)
 
 ---
 
@@ -21,6 +22,8 @@
   - [5. GitHub 远端同步与 PR 创建](#5-github-远端同步与-pr-创建)
   - [6. 提交贡献者全景展示与快捷搜索](#6-提交贡献者全景展示与快捷搜索)
   - [7. 系统级三态动态滑动主题](#7-系统级三态动态滑动主题)
+  - [8. 游戏化沉浸式新手引导](#8-游戏化沉浸式新手引导)
+  - [9. 时间范围筛选](#9-时间范围筛选)
 - [快速上手](#快速上手)
   - [环境准备](#环境准备)
   - [一键启动 (生产模式)](#一键启动-生产模式)
@@ -69,16 +72,26 @@
 ### 5. GitHub 远端同步与 PR 创建
 - **智能远程源检测**：本地未关联远程库时，提供直观的 GitHub 仓库配置引导；已关联时提供一键推送与网页直达。
 - **分支与标签创建**：可视化创建本地/远程分支，以及带说明的版本标签（Tag）。
+- **分支删除管理**：支持删除本地与远程分支，内置安全确认弹窗防止误操作。
 - **一键创建 Pull Request**：自动解析当前分支与上游主干，一键直达 GitHub PR 创建界面，降低协同流转成本。
 
 ### 6. 提交贡献者全景展示与快捷搜索
-- **贡献者全景看板 (Authors Showcase)**：底层采用 `git shortlog -sne --all` 解析全库所有贡献者，呈现每位作者的提交频次、专属头像缩写与邮箱提示。
-- **单选与组合过滤**：点击任意作者卡片，时间轴立即按该作者提交进行过滤，再次点击或点击“全部作者”平滑还原。
-- **展开式轻量搜索**：平时收拢为极简圆形图标，按下 `/` 键或点击图标顺滑展开并自动聚焦光标；按 `Escape` 键或点清除键立即收回并自动重置搜索结果。
+- **贡献者全景看板 (Authors Showcase)**：底层采用 `git shortlog -sne --all` 解析全库所有贡献者，呈现每位作者的提交频次、专属头像缩写与邮箱提示，展示区域下沉至左侧侧边栏底部与仓库列表清晰分隔。
+- **单选与组合过滤**：点击任意作者卡片，时间轴立即按该作者提交进行过滤，再次点击或点击"全部作者"平滑还原。
+- **展开式轻量搜索**：平时收拢为极简圆形图标，按下 `/` 键或点击图标顺滑展开并自动聚焦光标；失焦自动清除关键词并收回搜索框。
 
 ### 7. 系统级三态动态滑动主题
 - **浅色 (Light) / 跟随系统 (System) / 深色 (Dark)** 三态自由切换。
 - 基于 Framer Motion 物理弹簧阻尼模型打造，活动滑块在选项间丝滑滑动，兼顾白天护眼与暗光沉浸体验。
+
+### 8. 游戏化沉浸式新手引导
+- **交互式步骤向导 (Interactive Tour)**：首次使用或手动触发时，以高亮聚焦遮罩逐步引导用户认识核心功能区域，支持上一步/下一步/跳过操作。
+- **白话安全引导**：Git 操作弹窗内嵌通俗易懂的风险说明与推荐模式标注，降低新手误操作门槛。
+- **新手指南入口**：顶部导航栏提供一键重新进入引导流程的入口按钮。
+
+### 9. 时间范围筛选
+- **快捷时间过滤**：支持按"今天"、"昨天"、"最近 7 天"、"最近 30 天"快速筛选提交记录。
+- **与作者过滤联动**：时间范围与作者过滤可自由组合叠加，实现精细化提交历史定位。
 
 ---
 
@@ -140,27 +153,31 @@ pnpm dev
 
 ```
 Git-Timeline/
-├── client/                     # 前端工程 (React 18 + Vite + Tailwind CSS)
+├── client/                     # 前端工程 (React 19 + Vite 6 + Tailwind CSS)
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── diff/           # 代码 Diff 比对面板 (Unified / Split 模式)
-│   │   │   ├── layout/         # 顶部导航 Header、主题切换器 ThemeSlider
-│   │   │   ├── modals/         # 提交、回退、发布、PR 等全部 Portal 弹窗
-│   │   │   ├── sidebar/        # 左侧多仓库工作区侧边栏
-│   │   │   └── timeline/       # 提交卡片 CommitCard、作者全景 AuthorsShowcase
-│   │   ├── context/            # 仓库状态 RepoContext、主题与 Toast 上下文
-│   │   ├── services/           # 后端 REST API 封装
-│   │   └── types/              # TypeScript 共享契约与类型定义
-│   └── dist/                   # 前端生产打包静态资源
-├── server/                     # 后端工程 (Node.js + Express + TypeScript)
+│   │   │   ├── common/        # 通用组件：交互式引导 InteractiveTour、头像、自定义选择器
+│   │   │   ├── diff/          # 代码 Diff 比对面板 (Unified / Split 模式)
+│   │   │   ├── layout/        # 顶部导航 Header、侧边栏 Sidebar、主题切换器 ThemeSlider
+│   │   │   ├── modals/        # 提交、回退、发布、PR、新手指南等全部 Portal 弹窗
+│   │   │   └── timeline/      # 提交卡片 CommitCard、日期分组、作者全景 AuthorsShowcase
+│   │   ├── context/           # 仓库状态 RepoContext、主题 ThemeContext、Toast 上下文
+│   │   ├── services/          # 后端 REST API 统一封装
+│   │   ├── utils/             # 工具函数：头像散列生成、日期格式化
+│   │   └── types.ts           # TypeScript 共享契约与类型定义
+│   └── dist/                  # 前端生产打包静态资源
+├── server/                    # 后端工程 (Node.js + Express 4 + TypeScript 5)
 │   ├── src/
-│   │   ├── git/                # Git CLI 管道安全封装与原子解析引擎
-│   │   ├── routes/             # Git 提交、文件 Diff、版本操作 API
-│   │   ├── store/              # 本地仓库持久化配置存储
-│   │   └── index.ts            # 服务主入口与静态资源服务
-│   └── dist/                   # 后端编译产物
-├── LICENSE                     # MIT 开源授权协议
-└── README.md                   # 项目工程文档与使用指南
+│   │   ├── git/               # Git CLI 管道安全封装 (cli/parser/scanner)
+│   │   ├── routes/            # Git 提交查询、文件 Diff、版本操作、仓库管理 API
+│   │   ├── store/             # 本地仓库持久化配置存储
+│   │   ├── utils/             # 安全对话框与操作确认工具
+│   │   ├── types.ts           # 服务端类型定义
+│   │   └── index.ts           # 服务主入口与静态资源托管
+│   ├── test/                  # 后端单元测试
+│   └── dist/                  # 后端编译产物
+├── LICENSE                    # MIT 开源授权协议
+└── README.md                  # 项目工程文档与使用指南
 ```
 
 ### 核心数据流与设计规范
