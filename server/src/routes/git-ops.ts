@@ -569,17 +569,21 @@ gitOpsRouter.post('/:id/branches', async (req, res) => {
       return res.status(404).json({ error: '仓库不存在或路径无效' });
     }
 
-    const { name, checkout = true } = req.body;
+    const { name, checkout = true, startPoint } = req.body;
     const branchName = String(name || '').trim();
     if (!branchName) {
       return res.status(400).json({ error: '分支名称不能为空' });
     }
 
-    if (checkout) {
-      await runGitCommand(repoPath, ['checkout', '-b', branchName]);
-    } else {
-      await runGitCommand(repoPath, ['branch', branchName]);
+    const args = checkout
+      ? ['checkout', '-b', branchName]
+      : ['branch', branchName];
+
+    if (startPoint && String(startPoint).trim()) {
+      args.push(String(startPoint).trim());
     }
+
+    await runGitCommand(repoPath, args);
 
     res.json({ success: true, branchName });
   } catch (err: any) {
@@ -636,5 +640,112 @@ gitOpsRouter.post('/:id/stash', async (req, res) => {
     res.json({ success: true, action, output });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/repos/:id/reset - Reset branch to target commit (soft, mixed, hard)
+gitOpsRouter.post('/:id/reset', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const repoPath = await getRepoPathById(id);
+    if (!repoPath) {
+      return res.status(404).json({ error: '仓库不存在或路径无效' });
+    }
+
+    const { commitHash, mode = 'mixed' } = req.body;
+    const targetHash = String(commitHash || '').trim();
+    if (!targetHash) {
+      return res.status(400).json({ error: '目标提交 Hash 不能为空' });
+    }
+
+    const validModes = ['soft', 'mixed', 'hard'];
+    const resetMode = validModes.includes(mode) ? mode : 'mixed';
+
+    const output = await runGitCommand(repoPath, ['reset', `--${resetMode}`, targetHash]);
+
+    res.json({
+      success: true,
+      mode: resetMode,
+      commitHash: targetHash,
+      output: output || '回退成功'
+    });
+  } catch (err: any) {
+    const parsed = parseGitError(err);
+    res.status(500).json({ code: parsed.code, error: parsed.message });
+  }
+});
+
+// POST /api/repos/:id/revert - Revert target commit
+gitOpsRouter.post('/:id/revert', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const repoPath = await getRepoPathById(id);
+    if (!repoPath) {
+      return res.status(404).json({ error: '仓库不存在或路径无效' });
+    }
+
+    const { commitHash } = req.body;
+    const targetHash = String(commitHash || '').trim();
+    if (!targetHash) {
+      return res.status(400).json({ error: '目标提交 Hash 不能为空' });
+    }
+
+    const output = await runGitCommand(repoPath, ['revert', '--no-edit', targetHash]);
+
+    res.json({
+      success: true,
+      commitHash: targetHash,
+      output: output || '反转提交成功'
+    });
+  } catch (err: any) {
+    const parsed = parseGitError(err);
+    res.status(500).json({ code: parsed.code, error: parsed.message });
+  }
+});
+
+// POST /api/repos/:id/undo-commit - Undo last commit (git reset --soft HEAD~1)
+gitOpsRouter.post('/:id/undo-commit', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const repoPath = await getRepoPathById(id);
+    if (!repoPath) {
+      return res.status(404).json({ error: '仓库不存在或路径无效' });
+    }
+
+    const output = await runGitCommand(repoPath, ['reset', '--soft', 'HEAD~1']);
+
+    res.json({
+      success: true,
+      message: '已成功撤回最后一次提交，代码修改已完整保留在暂存区',
+      output
+    });
+  } catch (err: any) {
+    const parsed = parseGitError(err);
+    res.status(500).json({ code: parsed.code, error: parsed.message });
+  }
+});
+
+// POST /api/repos/:id/discard-changes - Discard all uncommitted changes in working directory
+gitOpsRouter.post('/:id/discard-changes', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const repoPath = await getRepoPathById(id);
+    if (!repoPath) {
+      return res.status(404).json({ error: '仓库不存在或路径无效' });
+    }
+
+    // Reset staging & discard tracked changes
+    await runGitCommand(repoPath, ['reset', 'HEAD']);
+    await runGitCommand(repoPath, ['checkout', '--', '.']);
+    // Clean untracked files and directories
+    await runGitCommand(repoPath, ['clean', '-fd']).catch(() => '');
+
+    res.json({
+      success: true,
+      message: '已成功撤销工作区所有未提交变动'
+    });
+  } catch (err: any) {
+    const parsed = parseGitError(err);
+    res.status(500).json({ code: parsed.code, error: parsed.message });
   }
 });

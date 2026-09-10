@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRepo } from '../../context/RepoContext';
 import { useToast } from '../../context/ToastContext';
 import { BranchItem, CommitFilterOptions } from '../../types';
-import { gitPull, gitPush, gitStash, fetchRepoStatus } from '../../services/api';
+import { gitPull, gitPush, gitStash, fetchRepoStatus, gitUndoLastCommit, gitDiscardChanges } from '../../services/api';
 import { CommitModal } from '../modals/CommitModal';
 import { PublishGitHubModal } from '../modals/PublishGitHubModal';
 import { CreateBranchTagModal } from '../modals/CreateBranchTagModal';
 import { CreatePrModal } from '../modals/CreatePrModal';
+import { ConfirmActionModal } from '../modals/ConfirmActionModal';
 import { ThemeSlider } from './ThemeSlider';
 import { 
   GitBranch, 
@@ -24,7 +25,9 @@ import {
   RotateCw, 
   X, 
   Check, 
-  ChevronDown 
+  ChevronDown,
+  Undo2,
+  Trash2
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -61,6 +64,10 @@ export const Header: React.FC<HeaderProps> = ({
   const [isPulling, setIsPulling] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
   const [pendingChangesCount, setPendingChangesCount] = useState<number>(0);
+  const [isUndoModalOpen, setIsUndoModalOpen] = useState(false);
+  const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false);
+  const [isUndoing, setIsUndoing] = useState(false);
+  const [isDiscarding, setIsDiscarding] = useState(false);
 
   // Container refs for detecting click-outside
   const branchMenuRef = useRef<HTMLDivElement>(null);
@@ -208,6 +215,48 @@ export const Header: React.FC<HeaderProps> = ({
       onRefresh();
     } catch (err: any) {
       showToast(err.message || '暂存操作失败', 'error');
+    }
+  };
+
+  const handleConfirmUndoCommit = async () => {
+    if (!activeRepo || isUndoing) return;
+    setIsUndoing(true);
+    const loadingToastId = showToast('正在撤回最后一次提交...', 'loading');
+    try {
+      await gitUndoLastCommit(activeRepo.id);
+      dismissToast(loadingToastId);
+      showToast('已成功撤回最后一次提交，代码变动已保留至暂存区', 'success');
+      setIsUndoModalOpen(false);
+      onRefresh();
+      fetchRepoStatus(activeRepo.id)
+        .then(res => setPendingChangesCount(res.files.length))
+        .catch(() => {});
+    } catch (err: any) {
+      dismissToast(loadingToastId);
+      showToast(err.message || '撤回提交失败', 'error');
+    } finally {
+      setIsUndoing(false);
+    }
+  };
+
+  const handleConfirmDiscardChanges = async () => {
+    if (!activeRepo || isDiscarding) return;
+    setIsDiscarding(true);
+    const loadingToastId = showToast('正在放弃工作区所有修改...', 'loading');
+    try {
+      await gitDiscardChanges(activeRepo.id);
+      dismissToast(loadingToastId);
+      showToast('已彻底放弃工作区所有未提交修改', 'success');
+      setIsDiscardModalOpen(false);
+      onRefresh();
+      fetchRepoStatus(activeRepo.id)
+        .then(res => setPendingChangesCount(res.files.length))
+        .catch(() => {});
+    } catch (err: any) {
+      dismissToast(loadingToastId);
+      showToast(err.message || '放弃修改失败', 'error');
+    } finally {
+      setIsDiscarding(false);
     }
   };
 
@@ -482,6 +531,27 @@ export const Header: React.FC<HeaderProps> = ({
                       <ArchiveRestore className="w-3.5 h-3.5 text-amber-500" />
                       <span>恢复暂存 (Stash Pop)</span>
                     </button>
+                    <div className="border-t border-slate-100 dark:border-[#30363d] my-1" />
+                    <button
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        setIsUndoModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-600 dark:text-amber-400 transition-colors"
+                    >
+                      <Undo2 className="w-3.5 h-3.5 text-amber-500" />
+                      <span>撤回上次提交 (Undo)</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        setIsDiscardModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                      <span>放弃工作区修改</span>
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -601,6 +671,32 @@ export const Header: React.FC<HeaderProps> = ({
           repoName={activeRepo.name}
           onClose={() => setIsPrModalOpen(false)}
           onOpenPublishModal={() => setIsGitHubModalOpen(true)}
+        />
+
+        <ConfirmActionModal
+          isOpen={isUndoModalOpen}
+          title="撤回最后一次提交"
+          description="确定要撤回分支最新的提交吗？该操作会将 HEAD 指针回退一步 (git reset --soft HEAD~1)，提交中的所有修改将被完整保留在暂存区，您可以重新检查或重新提交。"
+          badge="安全操作：改动完整保留在暂存区"
+          confirmLabel="撤回提交"
+          variant="warning"
+          icon={<Undo2 className="w-6 h-6 text-amber-500" />}
+          isLoading={isUndoing}
+          onConfirm={handleConfirmUndoCommit}
+          onCancel={() => setIsUndoModalOpen(false)}
+        />
+
+        <ConfirmActionModal
+          isOpen={isDiscardModalOpen}
+          title="放弃工作区所有修改"
+          description="警告：确定要彻底放弃工作区所有未提交的代码变动吗？所有已追踪文件的修改将被复原，未跟踪的临时新文件将被清除 (git reset & checkout & clean)。"
+          badge="高风险操作：工作区未提交改动不可找回"
+          confirmLabel="彻底放弃所有修改"
+          variant="danger"
+          icon={<Trash2 className="w-6 h-6 text-rose-500" />}
+          isLoading={isDiscarding}
+          onConfirm={handleConfirmDiscardChanges}
+          onCancel={() => setIsDiscardModalOpen(false)}
         />
       </>
     )}

@@ -331,6 +331,7 @@ function MainTimeline() {
                           key={commit.hash}
                           repoId={activeRepo.id}
                           commit={commit}
+                          onRefresh={handleRefresh}
                         />
                       ))}
                     </div>

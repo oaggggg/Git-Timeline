@@ -9,6 +9,7 @@ interface CreateBranchTagModalProps {
   isOpen: boolean;
   mode: 'branch' | 'tag';
   repoId: string;
+  startPoint?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -17,6 +18,7 @@ export const CreateBranchTagModal: React.FC<CreateBranchTagModalProps> = ({
   isOpen,
   mode,
   repoId,
+  startPoint,
   onClose,
   onSuccess,
 }) => {
@@ -60,7 +62,7 @@ export const CreateBranchTagModal: React.FC<CreateBranchTagModalProps> = ({
 
     try {
       if (mode === 'branch') {
-        await createBranch(repoId, cleanName, checkout);
+        await createBranch(repoId, cleanName, checkout, startPoint);
         showToast(`已成功创建分支: ${cleanName}`, 'success');
       } else {
         await createTag(repoId, cleanName, message.trim() || undefined);

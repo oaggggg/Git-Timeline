@@ -212,12 +212,13 @@ export async function publishToGitHub(
 export async function createBranch(
   repoId: string,
   name: string,
-  checkout = true
+  checkout = true,
+  startPoint?: string
 ): Promise<{ success: boolean; branchName: string }> {
   const res = await fetch(`${BASE_URL}/repos/${repoId}/branches`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, checkout })
+    body: JSON.stringify({ name, checkout, startPoint })
   });
   return handleResponse(res);
 }
@@ -265,6 +266,53 @@ export async function createPullRequest(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
+  });
+  return handleResponse(res);
+}
+
+// Rollback / Reset commit
+export async function gitReset(
+  repoId: string,
+  commitHash: string,
+  mode: 'soft' | 'mixed' | 'hard' = 'mixed'
+): Promise<{ success: boolean; mode: string; commitHash: string; output: string }> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ commitHash, mode })
+  });
+  return handleResponse(res);
+}
+
+// Revert commit
+export async function gitRevert(
+  repoId: string,
+  commitHash: string
+): Promise<{ success: boolean; commitHash: string; output: string }> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/revert`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ commitHash })
+  });
+  return handleResponse(res);
+}
+
+// Undo last commit (soft reset HEAD~1)
+export async function gitUndoLastCommit(
+  repoId: string
+): Promise<{ success: boolean; message: string; output?: string }> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/undo-commit`, {
+    method: 'POST'
+  });
+  return handleResponse(res);
+}
+
+// Discard all uncommitted changes in working directory
+export async function gitDiscardChanges(
+  repoId: string
+): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/discard-changes`, {
+    method: 'POST'
   });
   return handleResponse(res);
 }
