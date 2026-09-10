@@ -142,17 +142,17 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="h-16 px-6 flex items-center justify-between border-b bg-white/80 dark:bg-[#161b22]/80 backdrop-blur-md border-slate-200/80 dark:border-[#30363d] text-slate-800 dark:text-[#e6edf3] sticky top-0 z-30 select-none shadow-xs">
+      <header className="h-16 px-4 lg:px-6 flex items-center justify-between gap-3 border-b bg-white/80 dark:bg-[#161b22]/80 backdrop-blur-md border-slate-200/80 dark:border-[#30363d] text-slate-800 dark:text-[#e6edf3] sticky top-0 z-30 select-none shadow-xs">
       {/* Left: Active Repo Info & Branch Selector */}
-      <div className="flex items-center gap-3.5 min-w-0">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-sm font-bold truncate tracking-tight">
+      <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+        <div className="shrink-0 min-w-0">
+          <div className="flex items-center gap-2">
+            <h1 className="text-sm font-bold truncate tracking-tight max-w-[110px] sm:max-w-[170px]" title={activeRepo?.name}>
               {activeRepo ? activeRepo.name : '未选择仓库'}
             </h1>
             {activeRepo && (
               <span
-                className="text-[11px] text-slate-400 dark:text-[#8b949e] font-mono truncate max-w-[200px] px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-[#21262d]"
+                className="hidden 2xl:inline-block text-[11px] text-slate-400 dark:text-[#8b949e] font-mono truncate max-w-[150px] px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-[#21262d]"
                 title={activeRepo.path}
               >
                 {activeRepo.path}
@@ -163,7 +163,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Custom Rounded Pill Branch Selector */}
         {activeRepo && (
-          <div className="relative">
+          <div className="relative shrink-0">
             <motion.button
               whileTap={{ scale: 0.96 }}
               onClick={() => {
@@ -171,13 +171,13 @@ export const Header: React.FC<HeaderProps> = ({
                 setShowDateFilter(false);
                 setShowPathFilter(false);
               }}
-              className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-full bg-slate-100/90 dark:bg-[#21262d] border border-slate-200 dark:border-[#30363d] hover:border-slate-300 dark:hover:border-slate-500 transition-colors shadow-xs"
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-full bg-slate-100/90 dark:bg-[#21262d] border border-slate-200 dark:border-[#30363d] hover:border-slate-300 dark:hover:border-slate-500 transition-colors shadow-xs whitespace-nowrap shrink-0"
             >
               <GitBranch className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-              <span className="truncate max-w-[130px]">
-                {activeBranch === 'ALL' ? '全部分支 (--all)' : activeBranch}
+              <span className="truncate max-w-[110px] whitespace-nowrap">
+                {activeBranch === 'ALL' ? '全部分支' : activeBranch}
               </span>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showBranchMenu ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform shrink-0 ${showBranchMenu ? 'rotate-180' : ''}`} />
             </motion.button>
 
             {/* Branch Menu Dropdown */}
@@ -282,18 +282,18 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Visual Git Actions Toolbar */}
         {activeRepo && (
-          <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200/80 dark:border-[#30363d]">
+          <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200/80 dark:border-[#30363d] shrink-0">
             {/* Manual Commit Button */}
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setIsCommitModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all whitespace-nowrap shrink-0"
               title="手动提交代码变动"
             >
-              <GitCommit className="w-3.5 h-3.5" />
-              <span>提交代码</span>
+              <GitCommit className="w-3.5 h-3.5 shrink-0" />
+              <span className="whitespace-nowrap">提交代码</span>
               {pendingChangesCount > 0 && (
-                <span className="w-4 h-4 rounded-full bg-white/25 text-[10px] flex items-center justify-center font-bold">
+                <span className="w-4 h-4 rounded-full bg-white/25 text-[10px] flex items-center justify-center font-bold shrink-0">
                   {pendingChangesCount}
                 </span>
               )}
@@ -304,11 +304,11 @@ export const Header: React.FC<HeaderProps> = ({
               whileTap={{ scale: 0.95 }}
               onClick={handlePull}
               disabled={isPulling}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs"
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs whitespace-nowrap shrink-0"
               title="拉取远程更新 (git pull)"
             >
-              <ArrowDownToLine className={`w-3.5 h-3.5 text-indigo-500 ${isPulling ? 'animate-bounce' : ''}`} />
-              <span className="hidden sm:inline">{isPulling ? '拉取中...' : '拉取'}</span>
+              <ArrowDownToLine className={`w-3.5 h-3.5 text-indigo-500 shrink-0 ${isPulling ? 'animate-bounce' : ''}`} />
+              <span className="whitespace-nowrap">{isPulling ? '拉取中...' : '拉取'}</span>
             </motion.button>
 
             {/* Push Button */}
@@ -316,44 +316,45 @@ export const Header: React.FC<HeaderProps> = ({
               whileTap={{ scale: 0.95 }}
               onClick={handlePush}
               disabled={isPushing}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs"
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs whitespace-nowrap shrink-0"
               title="推送到远程 (git push)"
             >
-              <ArrowUpFromLine className={`w-3.5 h-3.5 text-indigo-500 ${isPushing ? 'animate-bounce' : ''}`} />
-              <span className="hidden sm:inline">{isPushing ? '推送中...' : '推送'}</span>
+              <ArrowUpFromLine className={`w-3.5 h-3.5 text-indigo-500 shrink-0 ${isPushing ? 'animate-bounce' : ''}`} />
+              <span className="whitespace-nowrap">{isPushing ? '推送中...' : '推送'}</span>
             </motion.button>
 
             {/* Publish to GitHub Button */}
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setIsGitHubModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs whitespace-nowrap shrink-0"
               title="发布或同步到 GitHub"
             >
-              <Globe className="w-3.5 h-3.5 text-emerald-500" />
-              <span className="hidden md:inline">发布到 GitHub</span>
+              <Globe className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <span className="hidden xl:inline whitespace-nowrap">发布到 GitHub</span>
+              <span className="inline xl:hidden whitespace-nowrap">GitHub</span>
             </motion.button>
 
             {/* Create PR Button */}
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setIsPrModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs whitespace-nowrap shrink-0"
               title="提交代码合并请求 (Pull Request)"
             >
-              <GitPullRequest className="w-3.5 h-3.5 text-indigo-500" />
-              <span className="hidden lg:inline">提交 PR</span>
+              <GitPullRequest className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+              <span className="whitespace-nowrap">提交 PR</span>
             </motion.button>
 
             {/* More Git Actions Menu */}
-            <div className="relative">
+            <div className="relative shrink-0">
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setShowMoreMenu(!showMoreMenu)}
-                className="w-7 h-7 rounded-full flex items-center justify-center bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-600 dark:text-slate-300 transition-colors shadow-xs"
+                className="w-7 h-7 rounded-full flex items-center justify-center bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-600 dark:text-slate-300 transition-colors shadow-xs shrink-0"
                 title="更多 Git 操作"
               >
-                <MoreHorizontal className="w-4 h-4" />
+                <MoreHorizontal className="w-4 h-4 shrink-0" />
               </motion.button>
 
               <AnimatePresence>
@@ -421,10 +422,10 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Center/Right: Search, Filter, Theme */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2 shrink-0">
         {/* Rounded Pill Search Bar */}
-        <div className="relative w-48 lg:w-64">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+        <div className="relative w-36 md:w-44 lg:w-56 shrink-0 transition-all focus-within:w-44 md:focus-within:w-56 lg:focus-within:w-64">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400 shrink-0" />
           <input
             type="text"
             placeholder="搜索提交、作者、SHA..."
@@ -435,7 +436,7 @@ export const Header: React.FC<HeaderProps> = ({
           {filterOptions.search && (
             <button
               onClick={() => onFilterChange({ search: '', skip: 0 })}
-              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 shrink-0"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -443,7 +444,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Rounded Pill Date Filter Button */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => {
@@ -451,15 +452,15 @@ export const Header: React.FC<HeaderProps> = ({
               setShowPathFilter(false);
               setShowBranchMenu(false);
             }}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-full border transition-colors shadow-xs ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border transition-colors shadow-xs whitespace-nowrap shrink-0 ${
               filterOptions.since
                 ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400'
                 : 'border-slate-200 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-600 dark:text-[#8b949e]'
             }`}
             title="时间范围筛选"
           >
-            <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-            <span>
+            <Calendar className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+            <span className="whitespace-nowrap">
               {filterOptions.since ? '已设时间' : '日期范围'}
             </span>
           </motion.button>
@@ -507,7 +508,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Rounded Pill Path Filter Button */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => {
@@ -515,15 +516,15 @@ export const Header: React.FC<HeaderProps> = ({
               setShowDateFilter(false);
               setShowBranchMenu(false);
             }}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-full border transition-colors shadow-xs ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border transition-colors shadow-xs whitespace-nowrap shrink-0 ${
               filterOptions.path
                 ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400'
                 : 'border-slate-200 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-600 dark:text-[#8b949e]'
             }`}
             title="按文件/目录反查历史"
           >
-            <FileCode className="w-3.5 h-3.5 text-indigo-500" />
-            <span>
+            <FileCode className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+            <span className="whitespace-nowrap">
               {filterOptions.path ? filterOptions.path.substring(0, 10) + '...' : '文件路径'}
             </span>
           </motion.button>
@@ -576,7 +577,7 @@ export const Header: React.FC<HeaderProps> = ({
           whileTap={{ rotate: 180 }}
           onClick={onRefresh}
           disabled={isLoading}
-          className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100/90 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-600 dark:text-[#8b949e] transition-colors shadow-xs"
+          className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100/90 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-600 dark:text-[#8b949e] transition-colors shadow-xs shrink-0"
           title="刷新提交记录"
         >
           <RotateCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-indigo-500' : ''}`} />
@@ -585,7 +586,7 @@ export const Header: React.FC<HeaderProps> = ({
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={toggleTheme}
-          className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100/90 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-600 dark:text-[#8b949e] transition-colors shadow-xs"
+          className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100/90 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-600 dark:text-[#8b949e] transition-colors shadow-xs shrink-0"
           title={theme === 'dark' ? '切换浅色模式' : '切换深色模式'}
         >
           {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
