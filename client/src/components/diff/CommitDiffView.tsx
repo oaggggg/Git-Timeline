@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CommitItem, DiffData } from '../../types';
-import { fetchCommitDiff } from '../../services/api';
+import { fetchCommitDiff, getCachedCommitDiff } from '../../services/api';
 import { 
   Plus, 
   Minus, 
@@ -42,14 +42,19 @@ interface DiffLine {
 }
 
 export const CommitDiffView: React.FC<CommitDiffViewProps> = ({ repoId, commit }) => {
-  const [diffData, setDiffData] = useState<DiffData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cachedData = getCachedCommitDiff(repoId, commit.hash);
+  const [diffData, setDiffData] = useState<DiffData | null>(cachedData || null);
+  const [loading, setLoading] = useState(!cachedData);
   const [error, setError] = useState<string | null>(null);
   const [diffMode, setDiffMode] = useState<'unified' | 'split'>('unified');
   const [fileFilter, setFileFilter] = useState('');
   const [collapsedFiles, setCollapsedFiles] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
+    if (diffData) {
+      setLoading(false);
+      return;
+    }
     let isMounted = true;
     setLoading(true);
     fetchCommitDiff(repoId, commit.hash)
@@ -68,7 +73,7 @@ export const CommitDiffView: React.FC<CommitDiffViewProps> = ({ repoId, commit }
     return () => {
       isMounted = false;
     };
-  }, [repoId, commit.hash]);
+  }, [repoId, commit.hash, diffData]);
 
   const parsedFiles = useMemo(() => {
     if (!diffData?.diff) return [];
@@ -95,41 +100,79 @@ export const CommitDiffView: React.FC<CommitDiffViewProps> = ({ repoId, commit }
     f.oldPath.toLowerCase().includes(fileFilter.toLowerCase())
   );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8 text-xs text-slate-400 gap-2">
-        <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
-        <span>正在解析代码变动细节...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-xs border border-rose-200 dark:border-rose-900/40">
-        {error}
-      </div>
-    );
-  }
-
-  if (parsedFiles.length === 0) {
-    return (
-      <div className="p-4 text-center text-xs text-slate-400">
-        该提交无文件内容变更（可能为合并提交或空提交）。
-      </div>
-    );
-  }
-
   return (
-    <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
-      className="mt-3 pt-3 border-t border-slate-200/80 dark:border-[#30363d] space-y-3.5"
-    >
-      {/* Diff Controls Bar - Rounded 2XL */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 text-xs bg-slate-50 dark:bg-[#161b22] p-2.5 rounded-2xl border border-slate-200/80 dark:border-[#30363d]">
+    <div className="space-y-3.5">
+      <AnimatePresence mode="wait">
+        {loading ? (
+          <motion.div
+            key="diff-skeleton"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="space-y-3"
+          >
+            {/* Skeleton Toolbar */}
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#161b22] border border-slate-200/80 dark:border-[#30363d] animate-pulse">
+              <div className="flex items-center gap-2.5">
+                <div className="w-20 h-4 bg-slate-200 dark:bg-[#30363d] rounded-full" />
+                <div className="w-12 h-4 bg-emerald-100 dark:bg-emerald-950/40 rounded-full" />
+                <div className="w-12 h-4 bg-rose-100 dark:bg-rose-950/40 rounded-full" />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-28 h-6 bg-slate-200 dark:bg-[#30363d] rounded-full" />
+                <div className="w-24 h-6 bg-slate-200 dark:bg-[#30363d] rounded-full" />
+              </div>
+            </div>
+
+            {/* Skeleton File Box */}
+            <div className="rounded-2xl border border-slate-200/80 dark:border-[#30363d] bg-white dark:bg-[#0d1117] overflow-hidden shadow-xs">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 dark:bg-[#161b22] border-b border-slate-200/80 dark:border-[#30363d] animate-pulse">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-slate-200 dark:bg-[#30363d] rounded-sm" />
+                  <div className="w-40 h-3.5 bg-slate-200 dark:bg-[#30363d] rounded-full" />
+                </div>
+                <div className="w-16 h-3.5 bg-slate-200 dark:bg-[#30363d] rounded-full" />
+              </div>
+              <div className="p-6 flex items-center justify-center text-xs text-slate-400 gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                <span>正在解析代码变动细节...</span>
+              </div>
+            </div>
+          </motion.div>
+        ) : error ? (
+          <motion.div
+            key="diff-error"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-xs border border-rose-200 dark:border-rose-900/40"
+          >
+            {error}
+          </motion.div>
+        ) : parsedFiles.length === 0 ? (
+          <motion.div
+            key="diff-empty"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="p-5 text-center text-xs text-slate-400 rounded-2xl bg-slate-50 dark:bg-[#161b22]/50 border border-slate-200/60 dark:border-[#30363d]/60"
+          >
+            该提交无文件内容变更（可能为合并提交或空提交）。
+          </motion.div>
+        ) : (
+          <motion.div
+            key="diff-content"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-3.5"
+          >
+            {/* Diff Controls Bar - Rounded 2XL */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 text-xs bg-slate-50 dark:bg-[#161b22] p-2.5 rounded-2xl border border-slate-200/80 dark:border-[#30363d]">
         <div className="flex items-center gap-3">
           <span className="font-semibold text-slate-700 dark:text-slate-300">
             {parsedFiles.length} 个文件变动
@@ -270,25 +313,40 @@ export const CommitDiffView: React.FC<CommitDiffViewProps> = ({ repoId, commit }
               </div>
 
               {/* File Diff Content */}
-              <AnimatePresence>
+              <AnimatePresence initial={false}>
                 {!isCollapsed && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-x-auto text-xs font-mono"
+                    animate={{ 
+                      opacity: 1, 
+                      height: 'auto',
+                      transition: {
+                        height: { duration: 0.28, ease: [0.16, 1, 0.3, 1] },
+                        opacity: { duration: 0.18, ease: 'easeOut' }
+                      }
+                    }}
+                    exit={{ 
+                      opacity: 0, 
+                      height: 0,
+                      transition: {
+                        height: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
+                        opacity: { duration: 0.12, ease: 'easeIn' }
+                      }
+                    }}
+                    className="overflow-hidden"
                   >
-                    {file.isBinary ? (
-                      <div className="p-8 flex flex-col items-center justify-center text-slate-400 gap-2.5">
-                        <Binary className="w-7 h-7 text-slate-400" />
-                        <span className="text-xs font-medium">二进制文件变更，无法生成文本比对</span>
-                      </div>
-                    ) : diffMode === 'unified' ? (
-                      renderUnifiedView(file)
-                    ) : (
-                      renderSplitView(file)
-                    )}
+                    <div className="overflow-x-auto text-xs font-mono">
+                      {file.isBinary ? (
+                        <div className="p-8 flex flex-col items-center justify-center text-slate-400 gap-2.5">
+                          <Binary className="w-7 h-7 text-slate-400" />
+                          <span className="text-xs font-medium">二进制文件变更，无法生成文本比对</span>
+                        </div>
+                      ) : diffMode === 'unified' ? (
+                        renderUnifiedView(file)
+                      ) : (
+                        renderSplitView(file)
+                      )}
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -297,6 +355,9 @@ export const CommitDiffView: React.FC<CommitDiffViewProps> = ({ repoId, commit }
         })}
       </div>
     </motion.div>
+  )}
+</AnimatePresence>
+</div>
   );
 
   function renderStatusBadge(status: ParsedDiffFile['status']) {

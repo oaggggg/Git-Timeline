@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CommitItem } from '../../types';
 import { CommitDiffView } from '../diff/CommitDiffView';
 import { useToast } from '../../context/ToastContext';
+import { prefetchCommitDiff } from '../../services/api';
 import { 
   GitCommit, 
   GitBranch, 
@@ -46,12 +47,17 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
 
   return (
     <motion.div
-      layout
+      layout="position"
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
+      transition={{ 
+        duration: 0.2, 
+        ease: 'easeOut',
+        layout: { duration: 0.35, ease: [0.16, 1, 0.3, 1] }
+      }}
       className="relative pl-8 pb-6 group"
+      onMouseEnter={() => prefetchCommitDiff(repoId, commit.hash)}
     >
       {/* Vertical Timeline Track Line */}
       <div className="absolute left-3.5 top-5 bottom-0 w-0.5 bg-slate-200 dark:bg-[#30363d] group-last:hidden" />
@@ -191,6 +197,7 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
             {/* Toggle Diff Action - Pill Button */}
             <motion.button
               whileTap={{ scale: 0.96 }}
+              onMouseEnter={() => prefetchCommitDiff(repoId, commit.hash)}
               onClick={() => setIsDiffExpanded(!isDiffExpanded)}
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
                 isDiffExpanded
@@ -213,9 +220,33 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
           </div>
 
           {/* Inline Expanded Diff View */}
-          <AnimatePresence>
+          <AnimatePresence initial={false}>
             {isDiffExpanded && (
-              <CommitDiffView repoId={repoId} commit={commit} />
+              <motion.div
+                key="diff-wrapper"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ 
+                  height: 'auto', 
+                  opacity: 1,
+                  transition: {
+                    height: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
+                    opacity: { duration: 0.24, ease: 'easeOut', delay: 0.04 }
+                  }
+                }}
+                exit={{ 
+                  height: 0, 
+                  opacity: 0,
+                  transition: {
+                    height: { duration: 0.26, ease: [0.16, 1, 0.3, 1] },
+                    opacity: { duration: 0.14, ease: 'easeIn' }
+                  }
+                }}
+                className="overflow-hidden"
+              >
+                <div className="pt-4 border-t border-slate-100 dark:border-[#30363d]/60 mt-3.5">
+                  <CommitDiffView repoId={repoId} commit={commit} />
+                </div>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>

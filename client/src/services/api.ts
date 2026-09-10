@@ -78,7 +78,26 @@ export async function fetchBranches(repoId: string): Promise<{ branches: BranchI
   return handleResponse(res);
 }
 
+const diffCache = new Map<string, DiffData>();
+
 export async function fetchCommitDiff(repoId: string, hash: string): Promise<DiffData> {
+  const key = `${repoId}:${hash}`;
+  if (diffCache.has(key)) {
+    return diffCache.get(key)!;
+  }
   const res = await fetch(`${BASE_URL}/repos/${repoId}/commits/${hash}/diff`);
-  return handleResponse(res);
+  const data = await handleResponse<DiffData>(res);
+  diffCache.set(key, data);
+  return data;
+}
+
+export function prefetchCommitDiff(repoId: string, hash: string): void {
+  const key = `${repoId}:${hash}`;
+  if (!diffCache.has(key)) {
+    fetchCommitDiff(repoId, hash).catch(() => {});
+  }
+}
+
+export function getCachedCommitDiff(repoId: string, hash: string): DiffData | undefined {
+  return diffCache.get(`${repoId}:${hash}`);
 }
