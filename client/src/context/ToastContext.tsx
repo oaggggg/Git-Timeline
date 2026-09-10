@@ -61,57 +61,64 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <ToastContext.Provider value={{ showToast, dismissToast }}>
       {children}
-      {/* Floating Toast Container with high z-index and max width constraint */}
-      <div className="fixed bottom-5 right-5 z-[1000] flex flex-col items-end gap-2.5 max-w-[calc(100vw-32px)] sm:max-w-md w-full pointer-events-none">
+      {/* Floating Toast Container with high z-index and adaptive sizing */}
+      <div className="fixed bottom-5 right-5 z-[1000] flex flex-col items-end gap-2 pointer-events-none max-w-[calc(100vw-32px)]">
         <AnimatePresence>
-          {toasts.map(toast => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, y: 16, scale: 0.94 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.94 }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className={`pointer-events-auto w-full flex items-start gap-3 p-3.5 rounded-2xl shadow-xl border text-xs font-medium backdrop-blur-md transition-all ${
-                toast.type === 'error'
-                  ? 'bg-rose-500/95 text-white border-rose-600 shadow-rose-500/20'
-                  : toast.type === 'info'
-                  ? 'bg-slate-900/90 text-white border-slate-700 shadow-slate-900/30'
-                  : toast.type === 'loading'
-                  ? 'bg-slate-900/90 text-white border-slate-700 shadow-slate-900/30'
-                  : 'bg-indigo-600/95 text-white border-indigo-500 shadow-indigo-600/25'
-              }`}
-            >
-              <div className="mt-0.5 shrink-0">
-                {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-white" />}
-                {toast.type === 'info' && <Info className="w-4 h-4 text-indigo-300" />}
-                {toast.type === 'loading' && <Loader2 className="w-4 h-4 text-indigo-300 animate-spin" />}
-                {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-300" />}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <p className="leading-relaxed break-words">{toast.message}</p>
-                {toast.action && (
-                  <button
-                    onClick={() => {
-                      toast.action?.onClick();
-                      dismissToast(toast.id);
-                    }}
-                    className="mt-2 inline-flex items-center px-2.5 py-1 rounded-full bg-white/20 hover:bg-white/30 text-[11px] font-semibold text-white transition-colors cursor-pointer"
-                  >
-                    {toast.action.label}
-                  </button>
-                )}
-              </div>
-
-              <button
-                onClick={() => dismissToast(toast.id)}
-                className="mt-0.5 shrink-0 p-1 rounded-full hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer"
-                title="关闭通知"
+          {toasts.map(toast => {
+            const isMultiLine = Boolean(toast.action || toast.message.length > 36);
+            return (
+              <motion.div
+                key={toast.id}
+                initial={{ opacity: 0, y: 16, scale: 0.94 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.94 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className={`pointer-events-auto w-fit max-w-[calc(100vw-32px)] sm:max-w-md flex ${
+                  isMultiLine ? 'items-start' : 'items-center'
+                } gap-2.5 px-4 py-2.5 rounded-2xl shadow-xl border text-xs font-medium backdrop-blur-md transition-all ${
+                  toast.type === 'error'
+                    ? 'bg-rose-500/95 text-white border-rose-600 shadow-rose-500/20'
+                    : toast.type === 'info'
+                    ? 'bg-slate-900/90 text-white border-slate-700 shadow-slate-900/30'
+                    : toast.type === 'loading'
+                    ? 'bg-slate-900/90 text-white border-slate-700 shadow-slate-900/30'
+                    : 'bg-indigo-600/95 text-white border-indigo-500 shadow-indigo-600/25'
+                }`}
               >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </motion.div>
-          ))}
+                <div className={`shrink-0 ${isMultiLine ? 'mt-0.5' : ''}`}>
+                  {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-white" />}
+                  {toast.type === 'info' && <Info className="w-4 h-4 text-indigo-300" />}
+                  {toast.type === 'loading' && <Loader2 className="w-4 h-4 text-indigo-300 animate-spin" />}
+                  {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-300" />}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="leading-relaxed break-words whitespace-pre-line">{toast.message}</p>
+                  {toast.action && (
+                    <button
+                      onClick={() => {
+                        toast.action?.onClick();
+                        dismissToast(toast.id);
+                      }}
+                      className="mt-2 inline-flex items-center px-2.5 py-1 rounded-full bg-white/20 hover:bg-white/30 text-[11px] font-semibold text-white transition-colors cursor-pointer"
+                    >
+                      {toast.action.label}
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => dismissToast(toast.id)}
+                  className={`shrink-0 p-1 rounded-full hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer ${
+                    isMultiLine ? 'mt-0.5' : ''
+                  }`}
+                  title="关闭通知"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
       </div>
     </ToastContext.Provider>
