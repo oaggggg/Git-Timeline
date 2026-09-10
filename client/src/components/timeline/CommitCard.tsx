@@ -38,10 +38,28 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
   const [isDiffExpanded, setIsDiffExpanded] = useState(false);
   const [isBodyExpanded, setIsBodyExpanded] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
+  const [menuPlacement, setMenuPlacement] = useState<'bottom' | 'top'>('bottom');
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
   const [isReverting, setIsReverting] = useState(false);
   const actionMenuRef = useRef<HTMLDivElement>(null);
+
+  const handleToggleActionMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!showActionMenu && actionMenuRef.current) {
+      const rect = actionMenuRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAboveInsideContainer = rect.top - 120;
+      const MENU_HEIGHT = 240;
+
+      if (spaceBelow < MENU_HEIGHT && spaceAboveInsideContainer >= MENU_HEIGHT) {
+        setMenuPlacement('top');
+      } else {
+        setMenuPlacement('bottom');
+      }
+    }
+    setShowActionMenu(prev => !prev);
+  };
 
   // Close action menu on click outside or Escape
   useEffect(() => {
@@ -125,7 +143,7 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
         ease: 'easeOut',
         layout: { duration: 0.35, ease: [0.16, 1, 0.3, 1] }
       }}
-      className="relative pl-8 pb-6 group"
+      className={`relative pl-8 pb-6 group ${showActionMenu ? 'z-30' : 'z-0'}`}
       onMouseEnter={() => prefetchCommitDiff(repoId, commit.hash)}
     >
       {/* Vertical Timeline Track Line */}
@@ -163,7 +181,7 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
                   {relativeTime}
                 </span>
                 <span
-                  className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-[#8b949e] font-mono bg-slate-100/90 dark:bg-[#21262d] px-2.5 py-0.5 rounded-full"
+                  className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-[#8b949e] tabular-nums font-medium bg-slate-100/90 dark:bg-[#21262d] px-2.5 py-0.5 rounded-full"
                   title={`精确时间戳: ${exactTime}`}
                 >
                   <Clock className="w-3 h-3 text-slate-400 shrink-0" />
@@ -278,7 +296,7 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
               <div ref={actionMenuRef} className="relative">
                 <motion.button
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowActionMenu(!showActionMenu)}
+                  onClick={handleToggleActionMenu}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-[#21262d] dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-2xs"
                   title="回退、撤销与更多操作"
                 >
@@ -290,11 +308,13 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
                 <AnimatePresence>
                   {showActionMenu && (
                     <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      initial={{ opacity: 0, y: menuPlacement === 'top' ? 8 : -8, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      exit={{ opacity: 0, y: menuPlacement === 'top' ? 8 : -8, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 bottom-full mb-2 w-56 p-1.5 rounded-2xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] shadow-2xl z-40 space-y-1 text-xs"
+                      className={`absolute right-0 ${
+                        menuPlacement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
+                      } w-56 p-1.5 rounded-2xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] shadow-2xl z-50 space-y-1 text-xs`}
                       onClick={e => e.stopPropagation()}
                     >
                       <div className="font-semibold text-slate-400 text-[10px] px-2.5 py-1 uppercase tracking-wider">
