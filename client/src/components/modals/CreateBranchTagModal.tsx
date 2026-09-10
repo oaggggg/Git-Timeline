@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../../context/ToastContext';
 import { createBranch, createTag } from '../../services/api';
@@ -65,11 +66,13 @@ export const CreateBranchTagModal: React.FC<CreateBranchTagModalProps> = ({
 
   const isBranch = mode === 'branch';
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs"
           onClick={onClose}
         >
           <motion.div
@@ -188,6 +191,7 @@ export const CreateBranchTagModal: React.FC<CreateBranchTagModalProps> = ({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };

@@ -122,7 +122,8 @@ export const Header: React.FC<HeaderProps> = ({
   const activeBranch = filterOptions.branch || 'ALL';
 
   return (
-    <header className="h-16 px-6 flex items-center justify-between border-b bg-white/80 dark:bg-[#161b22]/80 backdrop-blur-md border-slate-200/80 dark:border-[#30363d] text-slate-800 dark:text-[#e6edf3] sticky top-0 z-30 select-none shadow-xs">
+    <>
+      <header className="h-16 px-6 flex items-center justify-between border-b bg-white/80 dark:bg-[#161b22]/80 backdrop-blur-md border-slate-200/80 dark:border-[#30363d] text-slate-800 dark:text-[#e6edf3] sticky top-0 z-30 select-none shadow-xs">
       {/* Left: Active Repo Info & Branch Selector */}
       <div className="flex items-center gap-3.5 min-w-0">
         <div className="min-w-0">
@@ -550,39 +551,40 @@ export const Header: React.FC<HeaderProps> = ({
           {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
         </motion.button>
       </div>
-
-      {/* Git Operation Modals */}
-      {activeRepo && (
-        <>
-          <CommitModal
-            isOpen={isCommitModalOpen}
-            repoId={activeRepo.id}
-            onClose={() => setIsCommitModalOpen(false)}
-            onSuccess={() => {
-              onRefresh();
-              fetchRepoStatus(activeRepo.id)
-                .then(res => setPendingChangesCount(res.files.length))
-                .catch(() => {});
-            }}
-          />
-
-          <PublishGitHubModal
-            isOpen={isGitHubModalOpen}
-            repoId={activeRepo.id}
-            repoName={activeRepo.name}
-            onClose={() => setIsGitHubModalOpen(false)}
-            onSuccess={onRefresh}
-          />
-
-          <CreateBranchTagModal
-            isOpen={isBranchTagModalOpen}
-            mode={branchTagModalMode}
-            repoId={activeRepo.id}
-            onClose={() => setIsBranchTagModalOpen(false)}
-            onSuccess={onRefresh}
-          />
-        </>
-      )}
     </header>
-  );
+
+    {/* Git Operation Modals */}
+    {activeRepo && (
+      <>
+        <CommitModal
+          isOpen={isCommitModalOpen}
+          repoId={activeRepo.id}
+          onClose={() => setIsCommitModalOpen(false)}
+          onSuccess={() => {
+            onRefresh();
+            fetchRepoStatus(activeRepo.id)
+              .then(res => setPendingChangesCount(res.files.length))
+              .catch(() => {});
+          }}
+        />
+
+        <PublishGitHubModal
+          isOpen={isGitHubModalOpen}
+          repoId={activeRepo.id}
+          repoName={activeRepo.name}
+          onClose={() => setIsGitHubModalOpen(false)}
+          onSuccess={onRefresh}
+        />
+
+        <CreateBranchTagModal
+          isOpen={isBranchTagModalOpen}
+          mode={branchTagModalMode}
+          repoId={activeRepo.id}
+          onClose={() => setIsBranchTagModalOpen(false)}
+          onSuccess={onRefresh}
+        />
+      </>
+    )}
+  </>
+);
 };
