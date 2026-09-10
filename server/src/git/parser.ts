@@ -1,5 +1,5 @@
 import { runGitCommand } from './cli.js';
-import { CommitItem, CommitFileChange, BranchItem, TagItem, CommitFilterOptions } from '../types.js';
+import { CommitItem, CommitFileChange, BranchItem, TagItem, CommitFilterOptions, AuthorItem } from '../types.js';
 
 const RECORD_SEP = '\x1e';
 const FIELD_SEP = '\x1f';
@@ -30,6 +30,11 @@ export async function parseCommits(
   if (options.search && options.search.trim()) {
     const s = options.search.trim();
     args.push(`--grep=${s}`, `-i`);
+  }
+
+  if (options.author && options.author.trim()) {
+    const a = options.author.trim();
+    args.push(`--author=${a}`, `-i`);
   }
 
   if (options.since && options.since.trim()) {
@@ -285,6 +290,42 @@ export async function getTags(repoPath: string): Promise<TagItem[]> {
         const [name, commitHash] = line.split('|');
         return { name, commitHash };
       });
+  } catch {
+    return [];
+  }
+}
+
+export async function getAuthors(repoPath: string): Promise<AuthorItem[]> {
+  try {
+    const output = await runGitCommand(repoPath, ['shortlog', '-sne', '--all']);
+    if (!output || !output.trim()) return [];
+
+    const lines = output.trim().split('\n');
+    const authors: AuthorItem[] = [];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      // Match: "17\tAntigravity Developer <developer@example.com>"
+      const match = trimmed.match(/^(\d+)\s+([^<]+?)\s*<([^>]+)>$/);
+      if (match) {
+        authors.push({
+          commitsCount: parseInt(match[1], 10),
+          name: match[2].trim(),
+          email: match[3].trim()
+        });
+      } else {
+        const parts = trimmed.split(/\s{2,}|\t/);
+        if (parts.length >= 2) {
+          authors.push({
+            commitsCount: parseInt(parts[0].trim(), 10) || 1,
+            name: parts[1].trim(),
+            email: ''
+          });
+        }
+      }
+    }
+    return authors;
   } catch {
     return [];
   }

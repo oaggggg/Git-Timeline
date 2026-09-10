@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { getAvatarColor, getInitials } from '../../utils/avatar';
 
 interface CommitCardProps {
   repoId: string;
@@ -40,7 +41,7 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
   };
 
   const avatarBg = getAvatarColor(commit.authorName);
-  const initials = commit.authorName.slice(0, 2).toUpperCase();
+  const initials = getInitials(commit.authorName);
 
   const commitDate = new Date(commit.authorDate);
   const relativeTime = formatDistanceToNow(commitDate, { addSuffix: true, locale: zhCN });
@@ -279,16 +280,3 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit }) => {
     </motion.div>
   );
 };
-
-function getAvatarColor(name: string): string {
-  const colors = [
-    '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
-    '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1'
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % colors.length;
-  return colors[index];
-}

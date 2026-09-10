@@ -9,7 +9,8 @@ import {
   GitRemoteItem,
   PullRequestInfo,
   CreatePrRequest,
-  CreatePrResponse
+  CreatePrResponse,
+  AuthorItem
 } from '../types';
 
 const BASE_URL = '/api';
@@ -106,6 +107,7 @@ export async function fetchCommits(
   const params = new URLSearchParams();
   if (options.branch) params.set('branch', options.branch);
   if (options.search) params.set('search', options.search);
+  if (options.author) params.set('author', options.author);
   if (options.since) params.set('since', options.since);
   if (options.until) params.set('until', options.until);
   if (options.path) params.set('path', options.path);
@@ -113,6 +115,11 @@ export async function fetchCommits(
   if (options.limit !== undefined) params.set('limit', String(options.limit));
 
   const res = await fetch(`${BASE_URL}/repos/${repoId}/commits?${params.toString()}`);
+  return handleResponse(res);
+}
+
+export async function fetchAuthors(repoId: string): Promise<AuthorItem[]> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/authors`);
   return handleResponse(res);
 }
 

@@ -52,11 +52,18 @@ export interface RepoInfo {
 export interface CommitFilterOptions {
   branch?: string;
   search?: string;
+  author?: string;
   since?: string;
   until?: string;
   path?: string;
   skip?: number;
   limit?: number;
+}
+
+export interface AuthorItem {
+  name: string;
+  email: string;
+  commitsCount: number;
 }
 
 export interface DiffData {

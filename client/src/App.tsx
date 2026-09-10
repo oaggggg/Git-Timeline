@@ -7,8 +7,9 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { DateGroupHeader } from './components/timeline/DateGroupHeader';
 import { CommitCard } from './components/timeline/CommitCard';
-import { fetchCommits, fetchBranches } from './services/api';
-import { CommitItem, BranchItem, TagItem, CommitFilterOptions } from './types';
+import { AuthorsShowcase } from './components/timeline/AuthorsShowcase';
+import { fetchCommits, fetchBranches, fetchAuthors } from './services/api';
+import { CommitItem, BranchItem, TagItem, CommitFilterOptions, AuthorItem } from './types';
 import { groupCommitsByDate } from './utils/date';
 import { 
   GitCommit, 
@@ -26,6 +27,8 @@ function MainTimeline() {
   const [commits, setCommits] = useState<CommitItem[]>([]);
   const [branches, setBranches] = useState<BranchItem[]>([]);
   const [tags, setTags] = useState<TagItem[]>([]);
+  const [authors, setAuthors] = useState<AuthorItem[]>([]);
+  const [isLoadingAuthors, setIsLoadingAuthors] = useState(false);
   const [filterOptions, setFilterOptions] = useState<CommitFilterOptions>({
     branch: 'ALL',
     skip: 0,
@@ -57,12 +60,25 @@ function MainTimeline() {
   };
   const observerTarget = useRef<HTMLDivElement | null>(null);
 
-  // When active repo changes: reset filters and load branches
+  const loadAuthors = useCallback(async (repoId: string) => {
+    setIsLoadingAuthors(true);
+    try {
+      const res = await fetchAuthors(repoId);
+      setAuthors(res);
+    } catch (err) {
+      console.warn('Failed to fetch authors:', err);
+    } finally {
+      setIsLoadingAuthors(false);
+    }
+  }, []);
+
+  // When active repo changes: reset filters, load branches and authors
   useEffect(() => {
     if (!activeRepo) {
       setCommits([]);
       setBranches([]);
       setTags([]);
+      setAuthors([]);
       return;
     }
 
@@ -71,9 +87,7 @@ function MainTimeline() {
       skip: 0,
       limit: PAGE_SIZE,
       search: undefined,
-      since: undefined,
-      until: undefined,
-      path: undefined
+      author: undefined
     });
 
     fetchBranches(activeRepo.id)
@@ -84,7 +98,9 @@ function MainTimeline() {
       .catch(err => {
         console.warn('Failed to fetch branches:', err);
       });
-  }, [activeRepo?.id]);
+
+    loadAuthors(activeRepo.id);
+  }, [activeRepo?.id, loadAuthors]);
 
   // Load commits callback
   const loadCommits = useCallback(
@@ -129,6 +145,7 @@ function MainTimeline() {
     activeRepo?.id, 
     filterOptions.branch, 
     filterOptions.search, 
+    filterOptions.author,
     filterOptions.since, 
     filterOptions.until, 
     filterOptions.path
@@ -167,6 +184,15 @@ function MainTimeline() {
 
   const handleRefresh = () => {
     loadCommits(false);
+    if (activeRepo) {
+      fetchBranches(activeRepo.id)
+        .then(res => {
+          setBranches(res.branches);
+          setTags(res.tags);
+        })
+        .catch(() => {});
+      loadAuthors(activeRepo.id);
+    }
     showToast('提交记录已刷新', 'info');
   };
 
@@ -186,6 +212,18 @@ function MainTimeline() {
           onRefresh={handleRefresh}
           isLoading={isLoading}
         />
+
+        {/* Authors Showcase Area */}
+        {activeRepo && (
+          <AuthorsShowcase
+            authors={authors}
+            selectedAuthor={filterOptions.author}
+            onSelectAuthor={authorName => {
+              handleFilterChange({ author: authorName, skip: 0 });
+            }}
+            isLoading={isLoadingAuthors}
+          />
+        )}
 
         {/* Timeline Scroll Area - top-0 aligned so sticky date headers work perfectly */}
         <main className="flex-1 overflow-y-auto px-4 md:px-8 pb-16">

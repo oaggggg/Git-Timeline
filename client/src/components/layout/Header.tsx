@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRepo } from '../../context/RepoContext';
-import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { BranchItem, CommitFilterOptions } from '../../types';
 import { gitPull, gitPush, gitStash, fetchRepoStatus } from '../../services/api';
@@ -9,6 +8,7 @@ import { CommitModal } from '../modals/CommitModal';
 import { PublishGitHubModal } from '../modals/PublishGitHubModal';
 import { CreateBranchTagModal } from '../modals/CreateBranchTagModal';
 import { CreatePrModal } from '../modals/CreatePrModal';
+import { ThemeSlider } from './ThemeSlider';
 import { 
   GitBranch, 
   GitCommit, 
@@ -21,11 +21,7 @@ import {
   ArchiveRestore,
   MoreHorizontal,
   Search, 
-  Calendar, 
-  FileCode, 
   RotateCw, 
-  Sun, 
-  Moon, 
   X, 
   Check, 
   ChevronDown 
@@ -47,11 +43,13 @@ export const Header: React.FC<HeaderProps> = ({
   isLoading
 }) => {
   const { activeRepo } = useRepo();
-  const { theme, toggleTheme } = useTheme();
   const { showToast, dismissToast } = useToast();
   const [showBranchMenu, setShowBranchMenu] = useState(false);
-  const [showPathFilter, setShowPathFilter] = useState(false);
-  const [showDateFilter, setShowDateFilter] = useState(false);
+
+  // Expandable Search State & Refs
+  const [isSearchExpanded, setIsSearchExpanded] = useState(Boolean(filterOptions.search));
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Git Visual Actions State
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
@@ -67,10 +65,41 @@ export const Header: React.FC<HeaderProps> = ({
   // Container refs for detecting click-outside
   const branchMenuRef = useRef<HTMLDivElement>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
-  const dateFilterRef = useRef<HTMLDivElement>(null);
-  const pathFilterRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown menus on click outside or Escape key
+  // Open search with smooth expand and auto-focus
+  const handleOpenSearch = () => {
+    setIsSearchExpanded(true);
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 50);
+  };
+
+  // Close search and automatically clear query
+  const handleCloseSearch = () => {
+    setIsSearchExpanded(false);
+    if (filterOptions.search) {
+      onFilterChange({ search: undefined, skip: 0 });
+    }
+  };
+
+  // Global '/' keyboard shortcut to trigger search
+  useEffect(() => {
+    const handleGlobalSlash = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      if (tagName === 'input' || tagName === 'textarea' || target?.isContentEditable) {
+        return;
+      }
+      if (e.key === '/') {
+        e.preventDefault();
+        handleOpenSearch();
+      }
+    };
+    window.addEventListener('keydown', handleGlobalSlash);
+    return () => window.removeEventListener('keydown', handleGlobalSlash);
+  }, []);
+
+  // Close dropdown menus and empty search on click outside or Escape key
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | PointerEvent) => {
       const target = event.target as Node | null;
@@ -82,11 +111,10 @@ export const Header: React.FC<HeaderProps> = ({
       if (moreMenuRef.current && !moreMenuRef.current.contains(target)) {
         setShowMoreMenu(false);
       }
-      if (dateFilterRef.current && !dateFilterRef.current.contains(target)) {
-        setShowDateFilter(false);
-      }
-      if (pathFilterRef.current && !pathFilterRef.current.contains(target)) {
-        setShowPathFilter(false);
+      if (searchContainerRef.current && !searchContainerRef.current.contains(target)) {
+        if (!filterOptions.search) {
+          setIsSearchExpanded(false);
+        }
       }
     };
 
@@ -94,8 +122,9 @@ export const Header: React.FC<HeaderProps> = ({
       if (event.key === 'Escape') {
         setShowBranchMenu(false);
         setShowMoreMenu(false);
-        setShowDateFilter(false);
-        setShowPathFilter(false);
+        if (isSearchExpanded) {
+          handleCloseSearch();
+        }
       }
     };
 
@@ -106,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({
       document.removeEventListener('pointerdown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [isSearchExpanded, filterOptions.search]);
 
   // Load status to get pending changes count
   useEffect(() => {
@@ -210,11 +239,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div ref={branchMenuRef} className="relative shrink-0">
             <motion.button
               whileTap={{ scale: 0.96 }}
-              onClick={() => {
-                setShowBranchMenu(!showBranchMenu);
-                setShowDateFilter(false);
-                setShowPathFilter(false);
-              }}
+              onClick={() => setShowBranchMenu(!showBranchMenu)}
               className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-full bg-slate-100/90 dark:bg-[#21262d] border border-slate-200 dark:border-[#30363d] hover:border-slate-300 dark:hover:border-slate-500 transition-colors shadow-xs whitespace-nowrap shrink-0"
             >
               <GitBranch className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
@@ -465,158 +490,68 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      {/* Center/Right: Search, Filter, Theme */}
-      <div className="flex items-center gap-2 shrink-0">
-        {/* Rounded Pill Search Bar */}
-        <div className="relative w-36 md:w-44 lg:w-56 shrink-0 transition-all focus-within:w-44 md:focus-within:w-56 lg:focus-within:w-64">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400 shrink-0" />
-          <input
-            type="text"
-            placeholder="搜索提交、作者、SHA..."
-            value={filterOptions.search || ''}
-            onChange={e => onFilterChange({ search: e.target.value, skip: 0 })}
-            className="w-full pl-9 pr-8 py-1.5 text-xs rounded-full bg-slate-100/90 dark:bg-[#0d1117] border border-slate-200/80 dark:border-[#30363d] focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:outline-none dark:text-slate-200 placeholder-slate-400 transition-all focus:ring-2 focus:ring-indigo-500/15"
-          />
-          {filterOptions.search && (
-            <button
-              onClick={() => onFilterChange({ search: '', skip: 0 })}
-              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 shrink-0"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Rounded Pill Date Filter Button */}
-        <div ref={dateFilterRef} className="relative shrink-0">
-          <motion.button
-            whileTap={{ scale: 0.96 }}
-            onClick={() => {
-              setShowDateFilter(!showDateFilter);
-              setShowPathFilter(false);
-              setShowBranchMenu(false);
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border transition-colors shadow-xs whitespace-nowrap shrink-0 ${
-              filterOptions.since
-                ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400'
-                : 'border-slate-200 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-600 dark:text-[#8b949e]'
-            }`}
-            title="时间范围筛选"
-          >
-            <Calendar className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-            <span className="whitespace-nowrap">
-              {filterOptions.since ? '已设时间' : '日期范围'}
-            </span>
-          </motion.button>
-
-          <AnimatePresence>
-            {showDateFilter && (
-              <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+      {/* Center/Right: Expandable Search, Theme Slider, Refresh */}
+      <div className="flex items-center gap-2.5 shrink-0">
+        {/* Expandable Search Component */}
+        <div ref={searchContainerRef} className="relative shrink-0 flex items-center">
+          <AnimatePresence initial={false} mode="wait">
+            {!isSearchExpanded ? (
+              <motion.button
+                key="search-trigger-btn"
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
                 transition={{ duration: 0.15 }}
-                className="absolute right-0 mt-2 w-48 p-2 rounded-2xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] shadow-2xl z-40 space-y-1 text-xs"
+                whileTap={{ scale: 0.92 }}
+                onClick={handleOpenSearch}
+                className="flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-slate-100/90 dark:bg-[#21262d] border border-slate-200/80 dark:border-[#30363d] hover:border-slate-300 dark:hover:border-slate-500 text-slate-600 dark:text-[#8b949e] shadow-xs transition-colors shrink-0"
+                title="呼出搜索 (快捷键 /)"
               >
-                <div className="font-semibold text-slate-500 dark:text-slate-400 px-2.5 py-1 border-b border-slate-100 dark:border-[#30363d]">
-                  快速日期筛选
-                </div>
-                {[
-                  { label: '全部历史 (不限)', value: undefined },
-                  { label: '最近 7 天', value: '7 days ago' },
-                  { label: '最近 30 天', value: '30 days ago' },
-                  { label: '最近 90 天', value: '90 days ago' }
-                ].map(item => {
-                  const isSelected = filterOptions.since === item.value;
-                  return (
-                    <button
-                      key={item.label}
-                      onClick={() => {
-                        onFilterChange({ since: item.value, until: undefined, skip: 0 });
-                        setShowDateFilter(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-left transition-colors ${
-                        isSelected
-                          ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold'
-                          : 'hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-300'
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />}
-                    </button>
-                  );
-                })}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Rounded Pill Path Filter Button */}
-        <div ref={pathFilterRef} className="relative shrink-0">
-          <motion.button
-            whileTap={{ scale: 0.96 }}
-            onClick={() => {
-              setShowPathFilter(!showPathFilter);
-              setShowDateFilter(false);
-              setShowBranchMenu(false);
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border transition-colors shadow-xs whitespace-nowrap shrink-0 ${
-              filterOptions.path
-                ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400'
-                : 'border-slate-200 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-600 dark:text-[#8b949e]'
-            }`}
-            title="按文件/目录反查历史"
-          >
-            <FileCode className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-            <span className="whitespace-nowrap">
-              {filterOptions.path ? filterOptions.path.substring(0, 10) + '...' : '文件路径'}
-            </span>
-          </motion.button>
-
-          <AnimatePresence>
-            {showPathFilter && (
+                <Search className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <span className="text-[10px] font-mono font-medium text-slate-400 dark:text-slate-500 px-1 py-0.2 rounded bg-slate-200/70 dark:bg-[#30363d] leading-none">
+                  /
+                </span>
+              </motion.button>
+            ) : (
               <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 mt-2 w-72 p-3.5 rounded-2xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] shadow-2xl z-40 space-y-2.5 text-xs"
+                key="search-expanded-box"
+                initial={{ width: 36, opacity: 0 }}
+                animate={{ width: 230, opacity: 1 }}
+                exit={{ width: 36, opacity: 0 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className="relative flex items-center h-8"
               >
-                <div className="font-semibold text-slate-700 dark:text-slate-200">
-                  限定文件或目录路径
-                </div>
+                <Search className="w-3.5 h-3.5 absolute left-2.5 text-indigo-500 pointer-events-none shrink-0" />
                 <input
+                  ref={searchInputRef}
                   type="text"
-                  placeholder="例如: src/ 或 README.md"
-                  defaultValue={filterOptions.path || ''}
+                  placeholder="搜索提交、作者、SHA... (ESC退出)"
+                  value={filterOptions.search || ''}
+                  onChange={e => onFilterChange({ search: e.target.value, skip: 0 })}
                   onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      onFilterChange({ path: (e.target as HTMLInputElement).value.trim(), skip: 0 });
-                      setShowPathFilter(false);
+                    if (e.key === 'Escape') {
+                      handleCloseSearch();
                     }
                   }}
-                  className="w-full px-3 py-1.5 text-xs rounded-xl bg-slate-100 dark:bg-[#0d1117] border border-slate-200 dark:border-[#30363d] focus:border-indigo-500 focus:outline-none dark:text-slate-200 font-mono"
+                  className="w-full h-8 pl-8 pr-7 text-xs rounded-full bg-slate-100/90 dark:bg-[#0d1117] border border-indigo-500/70 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:outline-none dark:text-slate-200 placeholder-slate-400 shadow-xs focus:ring-2 focus:ring-indigo-500/15"
                 />
-                <div className="flex justify-between items-center text-[11px] text-slate-400">
-                  <span>按回车确认筛选</span>
-                  {filterOptions.path && (
-                    <button
-                      onClick={() => {
-                        onFilterChange({ path: undefined, skip: 0 });
-                        setShowPathFilter(false);
-                      }}
-                      className="text-rose-500 hover:underline"
-                    >
-                      清除条件
-                    </button>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={handleCloseSearch}
+                  className="absolute right-2 p-0.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-[#30363d] transition-colors"
+                  title="取消搜索并清空"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Circular Action Buttons */}
+        {/* Dynamic Sliding Theme Switcher */}
+        <ThemeSlider />
+
+        {/* Circular Refresh Button */}
         <motion.button
           whileTap={{ rotate: 180 }}
           onClick={onRefresh}
@@ -625,15 +560,6 @@ export const Header: React.FC<HeaderProps> = ({
           title="刷新提交记录"
         >
           <RotateCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-indigo-500' : ''}`} />
-        </motion.button>
-
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={toggleTheme}
-          className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100/90 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-600 dark:text-[#8b949e] transition-colors shadow-xs shrink-0"
-          title={theme === 'dark' ? '切换浅色模式' : '切换深色模式'}
-        >
-          {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
         </motion.button>
       </div>
     </header>

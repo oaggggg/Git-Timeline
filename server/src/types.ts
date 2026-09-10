@@ -52,11 +52,18 @@ export interface RepoInfo {
 export interface CommitFilterOptions {
   branch?: string; // branch name or 'ALL'
   search?: string; // keyword in subject, body, author, hash
+  author?: string; // filter by author name or email
   since?: string;  // ISO date or relative
   until?: string;  // ISO date
   path?: string;   // specific file or folder path
   skip?: number;
   limit?: number;
+}
+
+export interface AuthorItem {
+  name: string;
+  email: string;
+  commitsCount: number;
 }
 
 export interface GitFileStatus {

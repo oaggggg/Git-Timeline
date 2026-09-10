@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { loadConfig } from '../store/config.js';
-import { parseCommits, getCommitDiff, getBranches, getTags } from '../git/parser.js';
+import { parseCommits, getCommitDiff, getBranches, getTags, getAuthors } from '../git/parser.js';
 import { isValidGitRepo } from '../git/cli.js';
 
 export const commitsRouter = Router();
@@ -23,11 +23,12 @@ commitsRouter.get('/:id/commits', async (req, res) => {
       return res.status(404).json({ error: 'Repository not found or invalid' });
     }
 
-    const { branch, search, since, until, path: filePath, skip, limit } = req.query;
+    const { branch, search, author, since, until, path: filePath, skip, limit } = req.query;
 
     const result = await parseCommits(repoPath, {
       branch: branch ? String(branch) : undefined,
       search: search ? String(search) : undefined,
+      author: author ? String(author) : undefined,
       since: since ? String(since) : undefined,
       until: until ? String(until) : undefined,
       path: filePath ? String(filePath) : undefined,
@@ -36,6 +37,22 @@ commitsRouter.get('/:id/commits', async (req, res) => {
     });
 
     res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/repos/:id/authors
+commitsRouter.get('/:id/authors', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const repoPath = await getRepoPathById(id);
+    if (!repoPath) {
+      return res.status(404).json({ error: 'Repository not found or invalid' });
+    }
+
+    const authors = await getAuthors(repoPath);
+    res.json(authors);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
