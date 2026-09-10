@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRepo } from '../../context/RepoContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -11,7 +11,7 @@ import { CreateBranchTagModal } from '../modals/CreateBranchTagModal';
 import { CreatePrModal } from '../modals/CreatePrModal';
 import { 
   GitBranch, 
-  GitCommit,
+  GitCommit, 
   GitPullRequest,
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -63,6 +63,50 @@ export const Header: React.FC<HeaderProps> = ({
   const [isPulling, setIsPulling] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
   const [pendingChangesCount, setPendingChangesCount] = useState<number>(0);
+
+  // Container refs for detecting click-outside
+  const branchMenuRef = useRef<HTMLDivElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const dateFilterRef = useRef<HTMLDivElement>(null);
+  const pathFilterRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown menus on click outside or Escape key
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+
+      if (branchMenuRef.current && !branchMenuRef.current.contains(target)) {
+        setShowBranchMenu(false);
+      }
+      if (moreMenuRef.current && !moreMenuRef.current.contains(target)) {
+        setShowMoreMenu(false);
+      }
+      if (dateFilterRef.current && !dateFilterRef.current.contains(target)) {
+        setShowDateFilter(false);
+      }
+      if (pathFilterRef.current && !pathFilterRef.current.contains(target)) {
+        setShowPathFilter(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowBranchMenu(false);
+        setShowMoreMenu(false);
+        setShowDateFilter(false);
+        setShowPathFilter(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   // Load status to get pending changes count
   useEffect(() => {
@@ -163,7 +207,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Custom Rounded Pill Branch Selector */}
         {activeRepo && (
-          <div className="relative shrink-0">
+          <div ref={branchMenuRef} className="relative shrink-0">
             <motion.button
               whileTap={{ scale: 0.96 }}
               onClick={() => {
@@ -347,7 +391,7 @@ export const Header: React.FC<HeaderProps> = ({
             </motion.button>
 
             {/* More Git Actions Menu */}
-            <div className="relative shrink-0">
+            <div ref={moreMenuRef} className="relative shrink-0">
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setShowMoreMenu(!showMoreMenu)}
@@ -444,7 +488,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Rounded Pill Date Filter Button */}
-        <div className="relative shrink-0">
+        <div ref={dateFilterRef} className="relative shrink-0">
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => {
@@ -508,7 +552,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Rounded Pill Path Filter Button */}
-        <div className="relative shrink-0">
+        <div ref={pathFilterRef} className="relative shrink-0">
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => {

@@ -65,6 +65,17 @@ export const PublishGitHubModal: React.FC<PublishGitHubModalProps> = ({
     }
   }, [isOpen, repoId]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const originRemote = remotes.find(r => r.name === 'origin') || remotes[0];
   const hasExistingRemote = Boolean(originRemote && originRemote.pushUrl);
 

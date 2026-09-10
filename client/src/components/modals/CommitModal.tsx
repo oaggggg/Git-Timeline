@@ -71,6 +71,17 @@ export const CommitModal: React.FC<CommitModalProps> = ({
     }
   }, [isOpen, repoId]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const toggleSelectAll = () => {
     if (!status) return;
     if (selectedPaths.size === status.files.length) {
