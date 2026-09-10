@@ -8,9 +8,11 @@ import { gitPull, gitPush, gitStash, fetchRepoStatus } from '../../services/api'
 import { CommitModal } from '../modals/CommitModal';
 import { PublishGitHubModal } from '../modals/PublishGitHubModal';
 import { CreateBranchTagModal } from '../modals/CreateBranchTagModal';
+import { CreatePrModal } from '../modals/CreatePrModal';
 import { 
   GitBranch, 
   GitCommit,
+  GitPullRequest,
   ArrowDownToLine,
   ArrowUpFromLine,
   Globe,
@@ -46,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { activeRepo } = useRepo();
   const { theme, toggleTheme } = useTheme();
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
   const [showBranchMenu, setShowBranchMenu] = useState(false);
   const [showPathFilter, setShowPathFilter] = useState(false);
   const [showDateFilter, setShowDateFilter] = useState(false);
@@ -54,6 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
   // Git Visual Actions State
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
+  const [isPrModalOpen, setIsPrModalOpen] = useState(false);
   const [isBranchTagModalOpen, setIsBranchTagModalOpen] = useState(false);
   const [branchTagModalMode, setBranchTagModalMode] = useState<'branch' | 'tag'>('branch');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -75,13 +78,21 @@ export const Header: React.FC<HeaderProps> = ({
   const handlePull = async () => {
     if (!activeRepo || isPulling) return;
     setIsPulling(true);
-    showToast('正在拉取远程分支更新 (git pull)...', 'info');
+    const loadingToastId = showToast('正在拉取远程分支更新 (git pull)...', 'loading');
     try {
       const res = await gitPull(activeRepo.id);
+      dismissToast(loadingToastId);
       showToast(res.output?.trim() || '已成功拉取最新代码', 'success');
       onRefresh();
     } catch (err: any) {
-      showToast(err.message || '拉取失败，请检查远程分支配置或冲突', 'error');
+      dismissToast(loadingToastId);
+      const isNoRemote = err.code === 'NO_REMOTE' || /尚未配置远程仓库/.test(err.message || '');
+      showToast(
+        err.message || '拉取失败，请检查远程分支配置或冲突', 
+        'error',
+        isNoRemote ? 8000 : 6000,
+        isNoRemote ? { label: '关联 GitHub 仓库', onClick: () => setIsGitHubModalOpen(true) } : undefined
+      );
     } finally {
       setIsPulling(false);
     }
@@ -90,13 +101,21 @@ export const Header: React.FC<HeaderProps> = ({
   const handlePush = async () => {
     if (!activeRepo || isPushing) return;
     setIsPushing(true);
-    showToast('正在推送到远程 (git push)...', 'info');
+    const loadingToastId = showToast('正在推送到远程 (git push)...', 'loading');
     try {
       const res = await gitPush(activeRepo.id);
+      dismissToast(loadingToastId);
       showToast(res.output?.trim() || '已成功推送到远程', 'success');
       onRefresh();
     } catch (err: any) {
-      showToast(err.message || '推送失败，可尝试使用“发布到 GitHub”关联远程分支', 'error');
+      dismissToast(loadingToastId);
+      const isNoRemote = err.code === 'NO_REMOTE' || /尚未配置远程仓库/.test(err.message || '');
+      showToast(
+        err.message || '推送失败，可尝试使用「发布到 GitHub」关联远程分支', 
+        'error',
+        isNoRemote ? 8000 : 6000,
+        isNoRemote ? { label: '关联 GitHub 仓库', onClick: () => setIsGitHubModalOpen(true) } : undefined
+      );
     } finally {
       setIsPushing(false);
     }
@@ -315,6 +334,17 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="hidden md:inline">发布到 GitHub</span>
             </motion.button>
 
+            {/* Create PR Button */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsPrModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs"
+              title="提交代码合并请求 (Pull Request)"
+            >
+              <GitPullRequest className="w-3.5 h-3.5 text-indigo-500" />
+              <span className="hidden lg:inline">提交 PR</span>
+            </motion.button>
+
             {/* More Git Actions Menu */}
             <div className="relative">
               <motion.button
@@ -333,8 +363,18 @@ export const Header: React.FC<HeaderProps> = ({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute left-0 mt-2 w-44 p-1.5 rounded-2xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] shadow-2xl z-40 space-y-1 text-xs"
+                    className="absolute left-0 mt-2 w-48 p-1.5 rounded-2xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] shadow-2xl z-40 space-y-1 text-xs"
                   >
+                    <button
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        setIsPrModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                    >
+                      <GitPullRequest className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>提交 PR (Pull Request)</span>
+                    </button>
                     <button
                       onClick={() => {
                         setShowMoreMenu(false);
@@ -582,6 +622,14 @@ export const Header: React.FC<HeaderProps> = ({
           repoId={activeRepo.id}
           onClose={() => setIsBranchTagModalOpen(false)}
           onSuccess={onRefresh}
+        />
+
+        <CreatePrModal
+          isOpen={isPrModalOpen}
+          repoId={activeRepo.id}
+          repoName={activeRepo.name}
+          onClose={() => setIsPrModalOpen(false)}
+          onOpenPublishModal={() => setIsGitHubModalOpen(true)}
         />
       </>
     )}

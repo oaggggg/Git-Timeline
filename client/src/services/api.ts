@@ -6,7 +6,10 @@ import {
   CommitFilterOptions, 
   DiffData, 
   GitStatusResult, 
-  GitRemoteItem 
+  GitRemoteItem,
+  PullRequestInfo,
+  CreatePrRequest,
+  CreatePrResponse
 } from '../types';
 
 const BASE_URL = '/api';
@@ -14,7 +17,9 @@ const BASE_URL = '/api';
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(errorData.error || `Request failed with status ${res.status}`);
+    const err: any = new Error(errorData.error || `Request failed with status ${res.status}`);
+    err.code = errorData.code;
+    throw err;
   }
   return res.json();
 }
@@ -234,6 +239,25 @@ export async function gitStash(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, message })
+  });
+  return handleResponse(res);
+}
+
+// Pull Request Info
+export async function fetchPrInfo(repoId: string): Promise<PullRequestInfo> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/pr-info`);
+  return handleResponse(res);
+}
+
+// Create Pull Request
+export async function createPullRequest(
+  repoId: string,
+  data: CreatePrRequest
+): Promise<CreatePrResponse> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/pr`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
   });
   return handleResponse(res);
 }

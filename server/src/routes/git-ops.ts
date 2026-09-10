@@ -1,9 +1,106 @@
 import { Router } from 'express';
 import { loadConfig } from '../store/config.js';
 import { isValidGitRepo, runGitCommand } from '../git/cli.js';
-import { GitStatusResult, GitFileStatus, GitRemoteItem } from '../types.js';
+import { 
+  GitStatusResult, 
+  GitFileStatus, 
+  GitRemoteItem, 
+  PullRequestInfo, 
+  CreatePrRequest, 
+  CreatePrResponse 
+} from '../types.js';
 
 export const gitOpsRouter = Router();
+
+function parseGitError(err: any): { code: string; message: string } {
+  const raw = String(err?.message || err || '');
+
+  if (/does not appear to be a git repository|No remote repository specified/i.test(raw)) {
+    return {
+      code: 'NO_REMOTE',
+      message: '未检测到有效的远程仓库地址，请先使用「发布到 GitHub」进行关联或配置正确的远程仓库。'
+    };
+  }
+
+  if (/There is no tracking information for the current branch/i.test(raw)) {
+    return {
+      code: 'NO_TRACKING',
+      message: '当前分支尚未设置远程追踪分支。请先执行「推送 (Push)」将分支发布并绑定到远程。'
+    };
+  }
+
+  if (/Permission denied|Authentication failed|Could not read from remote repository/i.test(raw)) {
+    return {
+      code: 'AUTH_FAILED',
+      message: '远程仓库访问失败，请检查网络连接、GitHub 访问权限或 SSH Key / Personal Access Token。'
+    };
+  }
+
+  if (/no such ref was fetched|merge with the ref/i.test(raw)) {
+    return {
+      code: 'NO_REMOTE_REF',
+      message: '远程仓库尚未存在该分支（可能远程分支为 main 或尚未推送该分支），建议先执行「推送」将当前分支发布到远程。'
+    };
+  }
+
+  if (/Updates were rejected because the remote contains work/i.test(raw)) {
+    return {
+      code: 'REJECTED_NON_FAST_FORWARD',
+      message: '推送被拒绝：远程存在本地未拉取的更新，请先点击「拉取」合并最新提交后再推送。'
+    };
+  }
+
+  if (/Automatic merge failed|fix conflicts and then commit/i.test(raw)) {
+    return {
+      code: 'CONFLICT',
+      message: '拉取合并存在代码冲突，请在本地编辑器中解决冲突文件后再提交。'
+    };
+  }
+
+  const cleaned = raw.replace(/^Git error \[[^\]]+\]:\s*/, '').trim();
+  return {
+    code: 'GIT_ERROR',
+    message: cleaned || 'Git 操作失败'
+  };
+}
+
+async function getRepoRemotes(repoPath: string): Promise<GitRemoteItem[]> {
+  const output = await runGitCommand(repoPath, ['remote', '-v']).catch(() => '');
+  const lines = output.split(/\r?\n/).filter(Boolean);
+  const remoteMap = new Map<string, { fetchUrl: string; pushUrl: string }>();
+
+  for (const line of lines) {
+    const match = line.match(/^([^\t\s]+)\s+([^\s]+)\s+\((fetch|push)\)$/);
+    if (match) {
+      const [, name, url, type] = match;
+      const entry = remoteMap.get(name) || { fetchUrl: '', pushUrl: '' };
+      if (type === 'fetch') entry.fetchUrl = url;
+      if (type === 'push') entry.pushUrl = url;
+      remoteMap.set(name, entry);
+    }
+  }
+
+  const remotes: GitRemoteItem[] = [];
+  for (const [name, urls] of remoteMap.entries()) {
+    const targetUrl = urls.pushUrl || urls.fetchUrl;
+    const isGitHub = /github\.com/i.test(targetUrl);
+    let githubRepo: string | undefined;
+
+    if (isGitHub) {
+      const ghMatch = targetUrl.match(/github\.com[:/]([^/]+\/[^/.]+)(\.git)?/i);
+      if (ghMatch) githubRepo = ghMatch[1];
+    }
+
+    remotes.push({
+      name,
+      fetchUrl: urls.fetchUrl,
+      pushUrl: urls.pushUrl,
+      isGitHub,
+      githubRepo
+    });
+  }
+  return remotes;
+}
 
 async function getRepoPathById(id: string): Promise<string | null> {
   const config = await loadConfig();
@@ -144,10 +241,43 @@ gitOpsRouter.post('/:id/pull', async (req, res) => {
       return res.status(404).json({ error: '仓库不存在或路径无效' });
     }
 
-    const output = await runGitCommand(repoPath, ['pull']);
+    const remotes = await getRepoRemotes(repoPath);
+    if (remotes.length === 0) {
+      return res.status(400).json({
+        code: 'NO_REMOTE',
+        error: '当前仓库尚未配置远程仓库 (Remote)。请先点击顶部「发布到 GitHub」关联远程代码库。'
+      });
+    }
+
+    let output: string;
+    try {
+      output = await runGitCommand(repoPath, ['pull']);
+    } catch (pullErr: any) {
+      const raw = String(pullErr.message || '');
+      if (/no tracking information/i.test(raw)) {
+        const branchOut = await runGitCommand(repoPath, ['branch', '--show-current']).catch(() => '');
+        const currentBranch = branchOut.trim() || 'master';
+        const hasOrigin = remotes.some(r => r.name === 'origin');
+        const targetRemote = hasOrigin ? 'origin' : remotes[0].name;
+
+        try {
+          output = await runGitCommand(repoPath, ['pull', targetRemote, currentBranch]);
+        } catch {
+          return res.status(400).json({
+            code: 'NO_REMOTE_BRANCH',
+            error: `远程仓库 ${targetRemote} 尚未存在分支「${currentBranch}」。请先执行「推送」将该分支发布到远程。`
+          });
+        }
+      } else {
+        const parsed = parseGitError(pullErr);
+        return res.status(400).json({ code: parsed.code, error: parsed.message });
+      }
+    }
+
     res.json({ success: true, output });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    const parsed = parseGitError(err);
+    res.status(500).json({ code: parsed.code, error: parsed.message });
   }
 });
 
@@ -160,18 +290,35 @@ gitOpsRouter.post('/:id/push', async (req, res) => {
       return res.status(404).json({ error: '仓库不存在或路径无效' });
     }
 
+    const remotes = await getRepoRemotes(repoPath);
+    if (remotes.length === 0) {
+      return res.status(400).json({
+        code: 'NO_REMOTE',
+        error: '当前仓库尚未配置远程仓库 (Remote)。请先点击顶部「发布到 GitHub」关联远程代码库。'
+      });
+    }
+
     let output: string;
     try {
       output = await runGitCommand(repoPath, ['push']);
     } catch {
-      const branchOut = await runGitCommand(repoPath, ['branch', '--show-current']);
+      const branchOut = await runGitCommand(repoPath, ['branch', '--show-current']).catch(() => '');
       const currentBranch = branchOut.trim() || 'master';
-      output = await runGitCommand(repoPath, ['push', '-u', 'origin', currentBranch]);
+      const hasOrigin = remotes.some(r => r.name === 'origin');
+      const targetRemote = hasOrigin ? 'origin' : remotes[0].name;
+
+      try {
+        output = await runGitCommand(repoPath, ['push', '-u', targetRemote, currentBranch]);
+      } catch (pushErr: any) {
+        const parsed = parseGitError(pushErr);
+        return res.status(400).json({ code: parsed.code, error: parsed.message });
+      }
     }
 
     res.json({ success: true, output });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    const parsed = parseGitError(err);
+    res.status(500).json({ code: parsed.code, error: parsed.message });
   }
 });
 
@@ -184,44 +331,184 @@ gitOpsRouter.get('/:id/remotes', async (req, res) => {
       return res.status(404).json({ error: '仓库不存在或路径无效' });
     }
 
-    const output = await runGitCommand(repoPath, ['remote', '-v']);
-    const lines = output.split(/\r?\n/).filter(Boolean);
-    const remoteMap = new Map<string, { fetchUrl: string; pushUrl: string }>();
+    const remotes = await getRepoRemotes(repoPath);
+    res.json({ remotes });
+  } catch (err: any) {
+    const parsed = parseGitError(err);
+    res.status(500).json({ code: parsed.code, error: parsed.message });
+  }
+});
 
-    for (const line of lines) {
-      const match = line.match(/^([^\t\s]+)\s+([^\s]+)\s+\((fetch|push)\)$/);
-      if (match) {
-        const [, name, url, type] = match;
-        const entry = remoteMap.get(name) || { fetchUrl: '', pushUrl: '' };
-        if (type === 'fetch') entry.fetchUrl = url;
-        if (type === 'push') entry.pushUrl = url;
-        remoteMap.set(name, entry);
-      }
+// GET /api/repos/:id/pr-info - Get PR pre-fill info
+gitOpsRouter.get('/:id/pr-info', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const repoPath = await getRepoPathById(id);
+    if (!repoPath) {
+      return res.status(404).json({ error: '仓库不存在或路径无效' });
     }
 
-    const remotes: GitRemoteItem[] = [];
-    for (const [name, urls] of remoteMap.entries()) {
-      const targetUrl = urls.pushUrl || urls.fetchUrl;
-      const isGitHub = /github\.com/i.test(targetUrl);
-      let githubRepo: string | undefined;
+    const remotes = await getRepoRemotes(repoPath);
+    const githubRemote = remotes.find(r => r.isGitHub && r.githubRepo) || remotes[0];
+    const githubRepo = githubRemote?.githubRepo;
+    const githubUrl = githubRepo ? `https://github.com/${githubRepo}` : undefined;
 
-      if (isGitHub) {
-        const ghMatch = targetUrl.match(/github\.com[:/]([^/]+\/[^/.]+)(\.git)?/i);
-        if (ghMatch) githubRepo = ghMatch[1];
+    // Current branch
+    const branchOut = await runGitCommand(repoPath, ['branch', '--show-current']).catch(() => '');
+    const currentBranch = branchOut.trim() || 'master';
+
+    // Branches
+    const branchesOut = await runGitCommand(repoPath, ['branch', '-a', '--format=%(refname:short)']).catch(() => '');
+    const rawBranches = branchesOut.split(/\r?\n/).map(b => b.trim()).filter(Boolean);
+    const branchSet = new Set<string>();
+    for (const b of rawBranches) {
+      const clean = b.replace(/^(remotes\/)?[^/]+\//, '').trim();
+      const isRemoteName = remotes.some(r => r.name === b || r.name === clean);
+      if (clean && !clean.includes('HEAD') && clean !== 'origin' && !isRemoteName) {
+        branchSet.add(clean);
       }
+    }
+    const branches = Array.from(branchSet);
 
-      remotes.push({
-        name,
-        fetchUrl: urls.fetchUrl,
-        pushUrl: urls.pushUrl,
-        isGitHub,
-        githubRepo
+    // Default base branch
+    let defaultBaseBranch = 'main';
+    if (branches.includes('master') && !branches.includes('main')) {
+      defaultBaseBranch = 'master';
+    } else if (branches.includes('main')) {
+      defaultBaseBranch = 'main';
+    } else if (branches.length > 0) {
+      defaultBaseBranch = branches.find(b => b !== currentBranch) || branches[0];
+    }
+
+    // Ahead count
+    let ahead = 0;
+    try {
+      const statusOut = await runGitCommand(repoPath, ['status', '-sb']);
+      const aheadMatch = statusOut.match(/ahead\s+(\d+)/);
+      if (aheadMatch) ahead = parseInt(aheadMatch[1], 10);
+    } catch {}
+
+    // Latest commit subject
+    let latestCommitSubject = '';
+    try {
+      const logOut = await runGitCommand(repoPath, ['log', '-1', '--pretty=format:%s']);
+      latestCommitSubject = logOut.trim();
+    } catch {}
+
+    // Recent commits
+    const recentCommits: string[] = [];
+    try {
+      const recentOut = await runGitCommand(repoPath, ['log', '-5', '--pretty=format:%s']);
+      recentCommits.push(...recentOut.split(/\r?\n/).map(s => s.trim()).filter(Boolean));
+    } catch {}
+
+    const result: PullRequestInfo = {
+      currentBranch,
+      defaultBaseBranch,
+      branches,
+      githubRepo,
+      githubUrl,
+      hasGitHubRemote: Boolean(githubRepo),
+      ahead,
+      latestCommitSubject,
+      recentCommits
+    };
+
+    res.json(result);
+  } catch (err: any) {
+    const parsed = parseGitError(err);
+    res.status(500).json({ code: parsed.code, error: parsed.message });
+  }
+});
+
+// POST /api/repos/:id/pr - Create Pull Request or get compare link
+gitOpsRouter.post('/:id/pr', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const repoPath = await getRepoPathById(id);
+    if (!repoPath) {
+      return res.status(404).json({ error: '仓库不存在或路径无效' });
+    }
+
+    const { title, body, head, base, token } = req.body as CreatePrRequest;
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: 'PR 标题不能为空' });
+    }
+    if (!head || !base) {
+      return res.status(400).json({ error: '源分支与目标分支不能为空' });
+    }
+    if (head === base) {
+      return res.status(400).json({ error: '源分支与目标分支不能相同' });
+    }
+
+    const remotes = await getRepoRemotes(repoPath);
+    const githubRemote = remotes.find(r => r.isGitHub && r.githubRepo);
+    if (!githubRemote || !githubRemote.githubRepo) {
+      return res.status(400).json({
+        code: 'NO_GITHUB_REMOTE',
+        error: '当前仓库尚未关联 GitHub 远程仓库，请先点击顶部「发布到 GitHub」进行配置。'
       });
     }
 
-    res.json({ remotes });
+    const githubRepo = githubRemote.githubRepo;
+    const compareUrl = `https://github.com/${githubRepo}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}?expand=1&title=${encodeURIComponent(title.trim())}&body=${encodeURIComponent(body?.trim() || '')}`;
+
+    let prResult: CreatePrResponse['pr'] | undefined;
+
+    if (token && token.trim()) {
+      try {
+        const ghRes = await fetch(`https://api.github.com/repos/${githubRepo}/pulls`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token.trim()}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'Git-Timeline-Viewer',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            title: title.trim(),
+            head: head.trim(),
+            base: base.trim(),
+            body: body?.trim() || ''
+          })
+        });
+
+        const ghData: any = await ghRes.json();
+        if (!ghRes.ok) {
+          const errMsg = ghData.errors?.map((e: any) => e.message).join(', ') || ghData.message || 'GitHub 接口创建 PR 失败';
+          return res.status(ghRes.status).json({
+            code: 'GITHUB_API_ERROR',
+            error: `GitHub 接口反馈: ${errMsg}`,
+            compareUrl
+          });
+        }
+
+        prResult = {
+          id: ghData.id,
+          number: ghData.number,
+          html_url: ghData.html_url,
+          title: ghData.title,
+          state: ghData.state
+        };
+      } catch (apiErr: any) {
+        return res.status(500).json({
+          code: 'GITHUB_API_FETCH_ERROR',
+          error: `请求 GitHub 失败: ${apiErr.message}`,
+          compareUrl
+        });
+      }
+    }
+
+    const responseData: CreatePrResponse = {
+      success: true,
+      compareUrl,
+      pr: prResult
+    };
+
+    res.json(responseData);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    const parsed = parseGitError(err);
+    res.status(500).json({ code: parsed.code, error: parsed.message });
   }
 });
 

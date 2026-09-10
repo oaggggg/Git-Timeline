@@ -85,3 +85,35 @@ export interface GitRemoteItem {
   isGitHub: boolean;
   githubRepo?: string;
 }
+
+export interface PullRequestInfo {
+  currentBranch: string;
+  defaultBaseBranch: string;
+  branches: string[];
+  githubRepo?: string;
+  githubUrl?: string;
+  hasGitHubRemote: boolean;
+  ahead: number;
+  latestCommitSubject?: string;
+  recentCommits: string[];
+}
+
+export interface CreatePrRequest {
+  title: string;
+  body?: string;
+  head: string;
+  base: string;
+  token?: string;
+}
+
+export interface CreatePrResponse {
+  success: boolean;
+  compareUrl: string;
+  pr?: {
+    id: number;
+    number: number;
+    html_url: string;
+    title: string;
+    state: string;
+  };
+}
