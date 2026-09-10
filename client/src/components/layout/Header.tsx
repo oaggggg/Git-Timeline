@@ -1,19 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRepo } from '../../context/RepoContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 import { BranchItem, CommitFilterOptions } from '../../types';
+import { gitPull, gitPush, gitStash, fetchRepoStatus } from '../../services/api';
+import { CommitModal } from '../modals/CommitModal';
+import { PublishGitHubModal } from '../modals/PublishGitHubModal';
+import { CreateBranchTagModal } from '../modals/CreateBranchTagModal';
 import { 
   GitBranch, 
+  GitCommit,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Globe,
+  Tag,
+  Archive,
+  ArchiveRestore,
+  MoreHorizontal,
   Search, 
   Calendar, 
   FileCode, 
   RotateCw, 
   Sun, 
   Moon, 
-  X,
-  Check,
-  ChevronDown
+  X, 
+  Check, 
+  ChevronDown 
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -33,9 +46,78 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { activeRepo } = useRepo();
   const { theme, toggleTheme } = useTheme();
+  const { showToast } = useToast();
   const [showBranchMenu, setShowBranchMenu] = useState(false);
   const [showPathFilter, setShowPathFilter] = useState(false);
   const [showDateFilter, setShowDateFilter] = useState(false);
+
+  // Git Visual Actions State
+  const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
+  const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
+  const [isBranchTagModalOpen, setIsBranchTagModalOpen] = useState(false);
+  const [branchTagModalMode, setBranchTagModalMode] = useState<'branch' | 'tag'>('branch');
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [isPulling, setIsPulling] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
+  const [pendingChangesCount, setPendingChangesCount] = useState<number>(0);
+
+  // Load status to get pending changes count
+  useEffect(() => {
+    if (!activeRepo) {
+      setPendingChangesCount(0);
+      return;
+    }
+    fetchRepoStatus(activeRepo.id)
+      .then(res => setPendingChangesCount(res.files.length))
+      .catch(() => {});
+  }, [activeRepo?.id, isLoading]);
+
+  const handlePull = async () => {
+    if (!activeRepo || isPulling) return;
+    setIsPulling(true);
+    showToast('正在拉取远程分支更新 (git pull)...', 'info');
+    try {
+      const res = await gitPull(activeRepo.id);
+      showToast(res.output?.trim() || '已成功拉取最新代码', 'success');
+      onRefresh();
+    } catch (err: any) {
+      showToast(err.message || '拉取失败，请检查远程分支配置或冲突', 'error');
+    } finally {
+      setIsPulling(false);
+    }
+  };
+
+  const handlePush = async () => {
+    if (!activeRepo || isPushing) return;
+    setIsPushing(true);
+    showToast('正在推送到远程 (git push)...', 'info');
+    try {
+      const res = await gitPush(activeRepo.id);
+      showToast(res.output?.trim() || '已成功推送到远程', 'success');
+      onRefresh();
+    } catch (err: any) {
+      showToast(err.message || '推送失败，可尝试使用“发布到 GitHub”关联远程分支', 'error');
+    } finally {
+      setIsPushing(false);
+    }
+  };
+
+  const handleStash = async (action: 'stash' | 'pop') => {
+    if (!activeRepo) return;
+    setShowMoreMenu(false);
+    try {
+      await gitStash(activeRepo.id, action);
+      showToast(
+        action === 'stash' 
+          ? '工作区代码变动已成功暂存 (git stash)' 
+          : '已成功恢复暂存变动 (stash pop)', 
+        'success'
+      );
+      onRefresh();
+    } catch (err: any) {
+      showToast(err.message || '暂存操作失败', 'error');
+    }
+  };
 
   const activeBranch = filterOptions.branch || 'ALL';
 
@@ -175,6 +257,124 @@ export const Header: React.FC<HeaderProps> = ({
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+        )}
+
+        {/* Visual Git Actions Toolbar */}
+        {activeRepo && (
+          <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200/80 dark:border-[#30363d]">
+            {/* Manual Commit Button */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsCommitModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all"
+              title="手动提交代码变动"
+            >
+              <GitCommit className="w-3.5 h-3.5" />
+              <span>提交代码</span>
+              {pendingChangesCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-white/25 text-[10px] flex items-center justify-center font-bold">
+                  {pendingChangesCount}
+                </span>
+              )}
+            </motion.button>
+
+            {/* Pull Button */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handlePull}
+              disabled={isPulling}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs"
+              title="拉取远程更新 (git pull)"
+            >
+              <ArrowDownToLine className={`w-3.5 h-3.5 text-indigo-500 ${isPulling ? 'animate-bounce' : ''}`} />
+              <span className="hidden sm:inline">{isPulling ? '拉取中...' : '拉取'}</span>
+            </motion.button>
+
+            {/* Push Button */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handlePush}
+              disabled={isPushing}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs"
+              title="推送到远程 (git push)"
+            >
+              <ArrowUpFromLine className={`w-3.5 h-3.5 text-indigo-500 ${isPushing ? 'animate-bounce' : ''}`} />
+              <span className="hidden sm:inline">{isPushing ? '推送中...' : '推送'}</span>
+            </motion.button>
+
+            {/* Publish to GitHub Button */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsGitHubModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs"
+              title="发布或同步到 GitHub"
+            >
+              <Globe className="w-3.5 h-3.5 text-emerald-500" />
+              <span className="hidden md:inline">发布到 GitHub</span>
+            </motion.button>
+
+            {/* More Git Actions Menu */}
+            <div className="relative">
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                className="w-7 h-7 rounded-full flex items-center justify-center bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-600 dark:text-slate-300 transition-colors shadow-xs"
+                title="更多 Git 操作"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </motion.button>
+
+              <AnimatePresence>
+                {showMoreMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-0 mt-2 w-44 p-1.5 rounded-2xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] shadow-2xl z-40 space-y-1 text-xs"
+                  >
+                    <button
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        setBranchTagModalMode('branch');
+                        setIsBranchTagModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                    >
+                      <GitBranch className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>新建分支</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        setBranchTagModalMode('tag');
+                        setIsBranchTagModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                    >
+                      <Tag className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>打版本标签 (Tag)</span>
+                    </button>
+                    <div className="border-t border-slate-100 dark:border-[#30363d] my-1" />
+                    <button
+                      onClick={() => handleStash('stash')}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                    >
+                      <Archive className="w-3.5 h-3.5 text-amber-500" />
+                      <span>暂存工作区 (Stash)</span>
+                    </button>
+                    <button
+                      onClick={() => handleStash('pop')}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                    >
+                      <ArchiveRestore className="w-3.5 h-3.5 text-amber-500" />
+                      <span>恢复暂存 (Stash Pop)</span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         )}
       </div>
@@ -350,6 +550,39 @@ export const Header: React.FC<HeaderProps> = ({
           {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
         </motion.button>
       </div>
+
+      {/* Git Operation Modals */}
+      {activeRepo && (
+        <>
+          <CommitModal
+            isOpen={isCommitModalOpen}
+            repoId={activeRepo.id}
+            onClose={() => setIsCommitModalOpen(false)}
+            onSuccess={() => {
+              onRefresh();
+              fetchRepoStatus(activeRepo.id)
+                .then(res => setPendingChangesCount(res.files.length))
+                .catch(() => {});
+            }}
+          />
+
+          <PublishGitHubModal
+            isOpen={isGitHubModalOpen}
+            repoId={activeRepo.id}
+            repoName={activeRepo.name}
+            onClose={() => setIsGitHubModalOpen(false)}
+            onSuccess={onRefresh}
+          />
+
+          <CreateBranchTagModal
+            isOpen={isBranchTagModalOpen}
+            mode={branchTagModalMode}
+            repoId={activeRepo.id}
+            onClose={() => setIsBranchTagModalOpen(false)}
+            onSuccess={onRefresh}
+          />
+        </>
+      )}
     </header>
   );
 };

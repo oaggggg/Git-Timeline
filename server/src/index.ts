@@ -5,6 +5,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { reposRouter } from './routes/repos.js';
 import { commitsRouter } from './routes/commits.js';
+import { gitOpsRouter } from './routes/git-ops.js';
 import { isValidGitRepo, runGitCommand } from './git/cli.js';
 import { loadConfig, saveConfig, generateRepoId } from './store/config.js';
 
@@ -20,6 +21,7 @@ app.use(express.json({ limit: '20mb' }));
 // API routes
 app.use('/api/repos', reposRouter);
 app.use('/api/repos', commitsRouter);
+app.use('/api/repos', gitOpsRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

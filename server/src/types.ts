@@ -19,6 +19,7 @@ export interface CommitItem {
   body: string;
   parents: string[];
   refs: string[]; // branches, tags, HEAD
+  tags?: string[]; // parsed release tags e.g. ["v1.0.0"]
   stats: {
     filesChanged: number;
     additions: number;
@@ -56,4 +57,26 @@ export interface CommitFilterOptions {
   path?: string;   // specific file or folder path
   skip?: number;
   limit?: number;
+}
+
+export interface GitFileStatus {
+  path: string;
+  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked';
+  staged: boolean;
+}
+
+export interface GitStatusResult {
+  branch: string;
+  ahead: number;
+  behind: number;
+  files: GitFileStatus[];
+  clean: boolean;
+}
+
+export interface GitRemoteItem {
+  name: string;
+  fetchUrl: string;
+  pushUrl: string;
+  isGitHub: boolean;
+  githubRepo?: string;
 }

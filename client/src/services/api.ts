@@ -1,4 +1,13 @@
-import { RepoInfo, CommitItem, BranchItem, TagItem, CommitFilterOptions, DiffData } from '../types';
+import { 
+  RepoInfo, 
+  CommitItem, 
+  BranchItem, 
+  TagItem, 
+  CommitFilterOptions, 
+  DiffData, 
+  GitStatusResult, 
+  GitRemoteItem 
+} from '../types';
 
 const BASE_URL = '/api';
 
@@ -129,4 +138,102 @@ export function prefetchCommitDiff(repoId: string, hash: string): void {
 
 export function getCachedCommitDiff(repoId: string, hash: string): DiffData | undefined {
   return diffCache.get(`${repoId}:${hash}`);
+}
+
+// Git Status & Working Tree
+export async function fetchRepoStatus(repoId: string): Promise<GitStatusResult> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/status`);
+  return handleResponse(res);
+}
+
+// Git Commit
+export async function commitChanges(
+  repoId: string,
+  data: { message: string; files?: string[]; push?: boolean }
+): Promise<{ success: boolean; commitHash: string; message: string; output?: string; pushOutput?: string }> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/commit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  return handleResponse(res);
+}
+
+// Git Pull
+export async function gitPull(repoId: string): Promise<{ success: boolean; output: string }> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/pull`, {
+    method: 'POST'
+  });
+  return handleResponse(res);
+}
+
+// Git Push
+export async function gitPush(repoId: string, setUpstream?: boolean): Promise<{ success: boolean; output: string }> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/push`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ setUpstream })
+  });
+  return handleResponse(res);
+}
+
+// Git Remotes
+export async function fetchRemotes(repoId: string): Promise<{ remotes: GitRemoteItem[] }> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/remotes`);
+  return handleResponse(res);
+}
+
+// Publish to GitHub
+export async function publishToGitHub(
+  repoId: string,
+  remoteUrl: string
+): Promise<{ success: boolean; remoteUrl: string; currentBranch: string; githubUrl?: string; output?: string }> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/publish-github`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ remoteUrl })
+  });
+  return handleResponse(res);
+}
+
+// Create Branch
+export async function createBranch(
+  repoId: string,
+  name: string,
+  checkout = true
+): Promise<{ success: boolean; branchName: string }> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/branches`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, checkout })
+  });
+  return handleResponse(res);
+}
+
+// Create Tag
+export async function createTag(
+  repoId: string,
+  name: string,
+  message?: string
+): Promise<{ success: boolean; tagName: string }> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/tags`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, message })
+  });
+  return handleResponse(res);
+}
+
+// Stash / Pop
+export async function gitStash(
+  repoId: string,
+  action: 'stash' | 'pop',
+  message?: string
+): Promise<{ success: boolean; action: string; output: string }> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/stash`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, message })
+  });
+  return handleResponse(res);
 }

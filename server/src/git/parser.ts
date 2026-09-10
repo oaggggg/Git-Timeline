@@ -43,9 +43,22 @@ export async function parseCommits(
     args.push('--', options.path.trim());
   }
 
-  const output = await runGitCommand(repoPath, args);
+  const [output, repoTags] = await Promise.all([
+    runGitCommand(repoPath, args),
+    getTags(repoPath).catch(() => [] as TagItem[])
+  ]);
+
   if (!output || !output.trim()) {
     return { commits: [], hasMore: false };
+  }
+
+  // Build map of commit hash -> tag names
+  const tagMap = new Map<string, string[]>();
+  for (const tag of repoTags) {
+    if (!tag.commitHash) continue;
+    const existing = tagMap.get(tag.commitHash) || [];
+    existing.push(tag.name);
+    tagMap.set(tag.commitHash, existing);
   }
 
   const rawChunks = output.split(RECORD_SEP).filter(chunk => chunk.trim().length > 0);
@@ -119,6 +132,12 @@ export async function parseCommits(
       }
     }
 
+    const tagsFromRefs = refs
+      .filter(r => r.startsWith('tag: '))
+      .map(r => r.replace(/^tag:\s*/, '').trim());
+    const tagsFromMap = tagMap.get(hash) || tagMap.get(shortHash) || [];
+    const combinedTags = Array.from(new Set([...tagsFromRefs, ...tagsFromMap])).filter(Boolean);
+
     commits.push({
       hash,
       shortHash: shortHash || hash.substring(0, 7),
@@ -132,6 +151,7 @@ export async function parseCommits(
       body: body ? body.trim() : '',
       parents,
       refs,
+      tags: combinedTags.length > 0 ? combinedTags : undefined,
       stats: {
         filesChanged: fileChanges.length,
         additions: totalAdditions,

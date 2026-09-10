@@ -19,6 +19,7 @@ export interface CommitItem {
   body: string;
   parents: string[];
   refs: string[];
+  tags?: string[];
   stats: {
     filesChanged: number;
     additions: number;
@@ -61,4 +62,26 @@ export interface CommitFilterOptions {
 export interface DiffData {
   diff: string;
   files: CommitFileChange[];
+}
+
+export interface GitFileStatus {
+  path: string;
+  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked';
+  staged: boolean;
+}
+
+export interface GitStatusResult {
+  branch: string;
+  ahead: number;
+  behind: number;
+  files: GitFileStatus[];
+  clean: boolean;
+}
+
+export interface GitRemoteItem {
+  name: string;
+  fetchUrl: string;
+  pushUrl: string;
+  isGitHub: boolean;
+  githubRepo?: string;
 }
