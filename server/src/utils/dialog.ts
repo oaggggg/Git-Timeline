@@ -4,32 +4,49 @@ export async function openFolderDialog(initialPath?: string): Promise<string | n
   if (process.platform === 'win32') {
     const escapedInitial = initialPath ? initialPath.replace(/'/g, "''") : '';
     const psScript = `
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8;
-Add-Type -AssemblyName System.Windows.Forms;
-$dialog = New-Object System.Windows.Forms.FolderBrowserDialog;
-$dialog.Description = '请选择 Git 仓库文件夹';
-$dialog.ShowNewFolderButton = $false;
+$ProgressPreference = 'SilentlyContinue'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Windows.Forms
+
+$form = New-Object System.Windows.Forms.Form
+$form.TopMost = $true
+$form.ShowInTaskbar = $false
+$form.Opacity = 0
+$form.StartPosition = 'CenterScreen'
+$form.Show()
+$form.BringToFront()
+
+$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+$dialog.Description = '请选择 Git 仓库文件夹'
+$dialog.AutoUpgradeEnabled = $true
+$dialog.ShowNewFolderButton = $true
 if ('${escapedInitial}' -ne '' -and (Test-Path -LiteralPath '${escapedInitial}')) {
-    $dialog.SelectedPath = '${escapedInitial}';
+    $dialog.SelectedPath = '${escapedInitial}'
 }
-$res = $dialog.ShowDialog();
+
+$res = $dialog.ShowDialog($form)
+$form.Dispose()
+
 if ($res -eq [System.Windows.Forms.DialogResult]::OK) {
-    Write-Output $dialog.SelectedPath;
+    Write-Output $dialog.SelectedPath
 } else {
-    Write-Output '__CANCELLED__';
+    Write-Output '__CANCELLED__'
 }
 `;
+
+    const encodedCommand = Buffer.from(psScript, 'utf16le').toString('base64');
+
     return new Promise<string | null>((resolve) => {
       let isSettled = false;
       const child = execFile(
-        'powershell',
-        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA', '-Command', psScript],
+        'powershell.exe',
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA', '-EncodedCommand', encodedCommand],
         { encoding: 'utf8' },
-        (err, stdout) => {
+        (err, stdout, stderr) => {
           if (isSettled) return;
           isSettled = true;
           if (err) {
-            console.error('Folder dialog error:', err);
+            console.error('Folder dialog execution error:', err, stderr);
             resolve(null);
             return;
           }
@@ -43,7 +60,7 @@ if ($res -eq [System.Windows.Forms.DialogResult]::OK) {
         }
       );
 
-      // Safety timeout after 60s
+      // Safety timeout after 120s
       const timer = setTimeout(() => {
         if (!isSettled) {
           isSettled = true;
@@ -52,7 +69,7 @@ if ($res -eq [System.Windows.Forms.DialogResult]::OK) {
           } catch {}
           resolve(null);
         }
-      }, 60000);
+      }, 120000);
 
       child.on('exit', () => clearTimeout(timer));
     });

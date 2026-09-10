@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRepo } from '../../context/RepoContext';
 import { useToast } from '../../context/ToastContext';
+import { ConfirmDeleteModal } from '../modals/ConfirmDeleteModal';
 import { 
   GitBranch, 
   FolderGit2, 
@@ -11,20 +12,23 @@ import {
   Trash2, 
   ChevronLeft, 
   ChevronRight, 
-  Clock
+  Clock,
+  Loader2
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
 interface SidebarProps {
   onOpenRepo: () => void;
+  isOpeningRepo?: boolean;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo, isOpeningRepo = false }) => {
   const { repositories, activeRepo, selectRepo, removeRepo, toggleStar } = useRepo();
   const { showToast } = useToast();
   const [collapsed, setCollapsed] = useState(false);
   const [filterQuery, setFilterQuery] = useState('');
+  const [repoToDelete, setRepoToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const filteredRepos = repositories.filter(repo =>
     repo.name.toLowerCase().includes(filterQuery.toLowerCase()) ||
@@ -40,111 +44,140 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo }) => {
     showToast(isStarred ? `已取消收藏 ${name}` : `已置顶收藏 ${name}`, 'info');
   };
 
-  const handleRemoveRepo = (e: React.MouseEvent, id: string, name: string) => {
+  const handleRequestRemove = (e: React.MouseEvent, id: string, name: string) => {
     e.stopPropagation();
-    if (confirm(`确定从列表中移除仓库 ${name} 吗？`)) {
-      removeRepo(id);
-      showToast(`已移除仓库 ${name}`, 'info');
+    setRepoToDelete({ id, name });
+  };
+
+  const handleConfirmRemove = () => {
+    if (repoToDelete) {
+      removeRepo(repoToDelete.id);
+      showToast(`已移除仓库 ${repoToDelete.name}`, 'info');
+      setRepoToDelete(null);
     }
   };
 
   return (
-    <motion.aside
-      animate={{ width: collapsed ? 64 : 280 }}
-      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-      className="h-screen flex flex-col border-r select-none z-20 bg-white dark:bg-[#161b22] border-slate-200/80 dark:border-[#30363d] text-slate-800 dark:text-[#e6edf3] shrink-0 shadow-xs overflow-hidden"
-    >
-      {/* Header */}
-      <div
-        className={`h-16 flex items-center border-b border-slate-200/80 dark:border-[#30363d] overflow-hidden whitespace-nowrap transition-all ${
-          collapsed ? 'justify-center px-0' : 'justify-between px-3.5'
+    <>
+      <aside
+        className={`h-screen flex flex-col border-r select-none z-20 bg-white dark:bg-[#161b22] border-slate-200/80 dark:border-[#30363d] text-slate-800 dark:text-[#e6edf3] shrink-0 shadow-xs overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.2,0,0,1)] will-change-[width] ${
+          collapsed ? 'w-16' : 'w-[280px]'
         }`}
       >
-        {!collapsed && (
-          <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="p-2 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 shadow-xs shrink-0">
-              <FolderGit2 className="w-5 h-5" />
-            </div>
-            <span className="font-bold text-sm tracking-tight truncate whitespace-nowrap">
-              Git Timeline
-            </span>
-          </div>
-        )}
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={() => setCollapsed(!collapsed)}
-          title={collapsed ? '展开工作区' : '折叠工作区'}
-          className="p-2 rounded-2xl hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-500 dark:text-[#8b949e] transition-colors shrink-0"
-        >
-          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </motion.button>
-      </div>
-
-      {/* Action Button: Open Repo */}
-      <div className="p-3 border-b border-slate-200/80 dark:border-[#30363d] space-y-2 overflow-hidden">
-        <motion.button
-          whileTap={{ scale: 0.98 }}
-          onClick={onOpenRepo}
-          title={collapsed ? '打开仓库' : undefined}
-          className={`flex items-center justify-center gap-2 text-xs font-semibold rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs hover:shadow-indigo-500/20 transition-all ${
-            collapsed ? 'w-10 h-10 mx-auto p-0' : 'w-full py-2.5 px-3'
+        {/* Header */}
+        <div
+          className={`h-16 flex items-center border-b border-slate-200/80 dark:border-[#30363d] overflow-hidden whitespace-nowrap transition-all duration-300 ${
+            collapsed ? 'justify-center px-0' : 'justify-between px-3.5'
           }`}
         >
-          <FolderOpen className="w-4 h-4 shrink-0" />
-          {!collapsed && <span className="whitespace-nowrap truncate">打开仓库</span>}
-        </motion.button>
+          {!collapsed && (
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="p-2 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 shadow-xs shrink-0">
+                <FolderGit2 className="w-5 h-5" />
+              </div>
+              <span className="font-bold text-sm tracking-tight truncate whitespace-nowrap">
+                Git Timeline
+              </span>
+            </div>
+          )}
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setCollapsed(!collapsed)}
+            title={collapsed ? '展开工作区' : '折叠工作区'}
+            className="p-2 rounded-2xl hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-500 dark:text-[#8b949e] transition-colors shrink-0"
+          >
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </motion.button>
+        </div>
 
-        {!collapsed && (
-          <div className="relative overflow-hidden">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="快速过滤仓库..."
-              value={filterQuery}
-              onChange={e => setFilterQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-full bg-slate-100/90 dark:bg-[#0d1117] border border-slate-200/60 dark:border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:outline-none dark:text-slate-200 placeholder-slate-400 transition-all"
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Repository List */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2.5 space-y-4">
-        {/* Starred */}
-        {starredRepos.length > 0 && (
-          <div>
+        {/* Action Button: Open Repo */}
+        <div className="p-3 border-b border-slate-200/80 dark:border-[#30363d] space-y-2 overflow-hidden">
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={onOpenRepo}
+            disabled={isOpeningRepo}
+            title={collapsed ? (isOpeningRepo ? '正在选择文件夹...' : '打开仓库') : undefined}
+            className={`flex items-center justify-center gap-2 text-xs font-semibold rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-75 text-white shadow-xs hover:shadow-indigo-500/20 transition-all duration-200 ${
+              collapsed ? 'w-10 h-10 mx-auto p-0' : 'w-full py-2.5 px-3'
+            }`}
+          >
+            {isOpeningRepo ? (
+              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+            ) : (
+              <FolderOpen className="w-4 h-4 shrink-0" />
+            )}
             {!collapsed && (
+              <span className="whitespace-nowrap truncate">
+                {isOpeningRepo ? '请在系统窗口中选择...' : '打开仓库'}
+              </span>
+            )}
+          </motion.button>
+
+          {/* Search Filter Box */}
+          <div
+            className={`transition-all duration-300 overflow-hidden ${
+              collapsed ? 'max-h-0 opacity-0 pointer-events-none' : 'max-h-12 opacity-100'
+            }`}
+          >
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="快速过滤仓库..."
+                value={filterQuery}
+                onChange={e => setFilterQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-full bg-slate-100/90 dark:bg-[#0d1117] border border-slate-200/60 dark:border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:outline-none dark:text-slate-200 placeholder-slate-400 transition-all"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Repository List */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-2.5 space-y-4">
+          {/* Starred */}
+          {starredRepos.length > 0 && (
+            <div>
+              {!collapsed && (
+                <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-[#8b949e]">
+                  置顶收藏 ({starredRepos.length})
+                </div>
+              )}
+              <div className="space-y-1.5">
+                {starredRepos.map(repo => renderRepoItem(repo))}
+              </div>
+            </div>
+          )}
+
+          {/* Other */}
+          <div>
+            {!collapsed && starredRepos.length > 0 && (
               <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-[#8b949e]">
-                置顶收藏 ({starredRepos.length})
+                全部仓库 ({otherRepos.length})
               </div>
             )}
-            <div className="space-y-1.5">
-              {starredRepos.map(repo => renderRepoItem(repo))}
-            </div>
-          </div>
-        )}
-
-        {/* Other */}
-        <div>
-          {!collapsed && starredRepos.length > 0 && (
-            <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-[#8b949e]">
-              全部仓库 ({otherRepos.length})
-            </div>
-          )}
-          {otherRepos.length === 0 && starredRepos.length === 0 ? (
-            !collapsed && (
-              <div className="p-6 text-center text-xs text-slate-400 dark:text-[#8b949e] leading-relaxed">
-                暂无匹配仓库，请点击上方“打开仓库”
+            {otherRepos.length === 0 && starredRepos.length === 0 ? (
+              !collapsed && (
+                <div className="p-6 text-center text-xs text-slate-400 dark:text-[#8b949e] leading-relaxed">
+                  暂无匹配仓库，请点击上方“打开仓库”
+                </div>
+              )
+            ) : (
+              <div className="space-y-1.5">
+                {otherRepos.map(repo => renderRepoItem(repo))}
               </div>
-            )
-          ) : (
-            <div className="space-y-1.5">
-              {otherRepos.map(repo => renderRepoItem(repo))}
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
-    </motion.aside>
+      </aside>
+
+      {/* Modern Confirm Delete Modal replacing window.confirm */}
+      <ConfirmDeleteModal
+        isOpen={!!repoToDelete}
+        repoName={repoToDelete?.name || ''}
+        onConfirm={handleConfirmRemove}
+        onCancel={() => setRepoToDelete(null)}
+      />
+    </>
   );
 
   function renderRepoItem(repo: typeof repositories[0]) {
@@ -207,7 +240,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo }) => {
                 />
               </motion.button>
               <button
-                onClick={e => handleRemoveRepo(e, repo.id, repo.name)}
+                onClick={e => handleRequestRemove(e, repo.id, repo.name)}
                 title="移除"
                 className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-rose-100 dark:hover:bg-rose-950/50 text-slate-400 hover:text-rose-500"
               >

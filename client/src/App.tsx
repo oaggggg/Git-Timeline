@@ -7,7 +7,6 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { DateGroupHeader } from './components/timeline/DateGroupHeader';
 import { CommitCard } from './components/timeline/CommitCard';
-import { OpenRepoModal } from './components/modals/OpenRepoModal';
 import { fetchCommits, fetchBranches } from './services/api';
 import { CommitItem, BranchItem, TagItem, CommitFilterOptions } from './types';
 import { groupCommitsByDate } from './utils/date';
@@ -36,9 +35,26 @@ function MainTimeline() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isOpenRepoModalOpen, setIsOpenRepoModalOpen] = useState(false);
+  const [isOpeningRepo, setIsOpeningRepo] = useState(false);
 
-  // Sentinel ref for infinite scroll
+  // Directly open system native folder picker
+  const handleOpenNativeRepo = async () => {
+    if (isOpeningRepo) return;
+    setIsOpeningRepo(true);
+    showToast('正在呼出系统文件夹选择器，请在窗口中选择...', 'info');
+    try {
+      const repo = await openRepoDialog();
+      if (repo) {
+        showToast(`已成功打开仓库: ${repo.name}`, 'success');
+      } else {
+        showToast('已取消选择文件夹', 'info');
+      }
+    } catch (err: any) {
+      showToast(err.message || '打开仓库失败', 'error');
+    } finally {
+      setIsOpeningRepo(false);
+    }
+  };
   const observerTarget = useRef<HTMLDivElement | null>(null);
 
   // When active repo changes: reset filters and load branches
@@ -159,10 +175,10 @@ function MainTimeline() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-[#0d1117] text-slate-900 dark:text-[#e6edf3]">
       {/* Left Workspace Sidebar */}
-      <Sidebar onOpenRepo={() => setIsOpenRepoModalOpen(true)} />
+      <Sidebar onOpenRepo={handleOpenNativeRepo} isOpeningRepo={isOpeningRepo} />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden [contain:content]">
         <Header
           branches={branches}
           filterOptions={filterOptions}
@@ -207,11 +223,16 @@ function MainTimeline() {
                 </p>
                 <motion.button
                   whileTap={{ scale: 0.96 }}
-                  onClick={() => setIsOpenRepoModalOpen(true)}
-                  className="flex items-center gap-2 px-6 py-2.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors"
+                  onClick={handleOpenNativeRepo}
+                  disabled={isOpeningRepo}
+                  className="flex items-center gap-2 px-6 py-2.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-75 text-white shadow-xs transition-colors"
                 >
-                  <FolderOpen className="w-4 h-4" />
-                  <span>打开本地仓库</span>
+                  {isOpeningRepo ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FolderOpen className="w-4 h-4" />
+                  )}
+                  <span>{isOpeningRepo ? '请在系统窗口中选择...' : '打开本地仓库'}</span>
                 </motion.button>
               </motion.div>
             )}
@@ -305,12 +326,6 @@ function MainTimeline() {
           </div>
         </main>
       </div>
-
-      {/* Open Repo Modal */}
-      <OpenRepoModal
-        isOpen={isOpenRepoModalOpen}
-        onClose={() => setIsOpenRepoModalOpen(false)}
-      />
     </div>
   );
 }
