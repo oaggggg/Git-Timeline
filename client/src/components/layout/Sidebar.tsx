@@ -13,17 +13,31 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Clock,
-  Loader2
+  Loader2,
+  Users
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { AuthorItem } from '../../types';
+import { getAvatarColor, getInitials } from '../../utils/avatar';
 
 interface SidebarProps {
   onOpenRepo: () => void;
   isOpeningRepo?: boolean;
+  authors?: AuthorItem[];
+  selectedAuthor?: string;
+  onSelectAuthor?: (authorName?: string) => void;
+  isLoadingAuthors?: boolean;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo, isOpeningRepo = false }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ 
+  onOpenRepo, 
+  isOpeningRepo = false,
+  authors = [],
+  selectedAuthor,
+  onSelectAuthor,
+  isLoadingAuthors = false
+}) => {
   const { repositories, activeRepo, selectRepo, removeRepo, toggleStar } = useRepo();
   const { showToast } = useToast();
   const [collapsed, setCollapsed] = useState(false);
@@ -37,6 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo, isOpeningRepo = fa
 
   const starredRepos = filteredRepos.filter(r => r.isStarred);
   const otherRepos = filteredRepos.filter(r => !r.isStarred);
+  const totalCommits = authors.reduce((sum, a) => sum + a.commitsCount, 0);
 
   const handleToggleStar = (e: React.MouseEvent, id: string, name: string, isStarred?: boolean) => {
     e.stopPropagation();
@@ -176,9 +191,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo, isOpeningRepo = fa
 
           {/* Other */}
           <div>
-            {!collapsed && starredRepos.length > 0 && (
+            {!collapsed && (
               <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-[#8b949e]">
-                全部仓库 ({otherRepos.length})
+                {starredRepos.length > 0 ? `其他仓库 (${otherRepos.length})` : `本地仓库 (${otherRepos.length})`}
               </div>
             )}
             {otherRepos.length === 0 && starredRepos.length === 0 ? (
@@ -194,6 +209,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo, isOpeningRepo = fa
             )}
           </div>
         </div>
+
+        {/* Contributors / Authors Section */}
+        {renderContributorsSection()}
       </aside>
 
       {/* Modern Confirm Delete Modal replacing window.confirm */}
@@ -294,6 +312,153 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo, isOpeningRepo = fa
             )}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  function renderContributorsSection() {
+    if (collapsed) {
+      return (
+        <div className="shrink-0 border-t border-slate-200/80 dark:border-[#30363d] py-2 flex flex-col items-center gap-1.5 bg-slate-50/50 dark:bg-[#11161d]">
+          <div
+            title={
+              activeRepo
+                ? `代码贡献者 (${authors.length} 位, 共 ${totalCommits} 次提交)`
+                : '代码贡献者'
+            }
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 dark:text-[#8b949e] hover:text-indigo-600 dark:hover:text-indigo-400 shrink-0 transition-colors"
+          >
+            <Users className="w-4 h-4" />
+          </div>
+
+          {isLoadingAuthors ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500 my-1 shrink-0" />
+          ) : (
+            <div className="max-h-36 overflow-y-auto flex flex-col items-center gap-1.5 no-scrollbar py-0.5">
+              {authors.slice(0, 6).map(author => {
+                const isSelected = selectedAuthor === author.name;
+                const avatarColor = getAvatarColor(author.name);
+                const initials = getInitials(author.name);
+
+                return (
+                  <motion.button
+                    key={`${author.name}-${author.email || ''}`}
+                    type="button"
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => onSelectAuthor?.(isSelected ? undefined : author.name)}
+                    title={`${author.name} - ${author.commitsCount} 次提交${
+                      isSelected ? ' (已过滤，点击显示全部)' : ' (点击筛选此作者)'
+                    }`}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-2xs transition-all cursor-pointer shrink-0 ${
+                      isSelected
+                        ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-white dark:ring-offset-[#11161d]'
+                        : 'hover:opacity-85'
+                    }`}
+                    style={{ backgroundColor: avatarColor }}
+                  >
+                    {initials}
+                  </motion.button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="shrink-0 border-t border-slate-200/80 dark:border-[#30363d] bg-slate-50/70 dark:bg-[#11161d] flex flex-col">
+        {/* Section Header */}
+        <div className="px-3 pt-2.5 pb-1.5 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-[#8b949e] tracking-wide">
+            <Users className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+            <span>代码贡献者</span>
+            {authors.length > 0 && (
+              <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200/70 dark:bg-[#21262d] text-slate-600 dark:text-slate-300">
+                {authors.length}
+              </span>
+            )}
+          </div>
+
+          {selectedAuthor ? (
+            <button
+              type="button"
+              onClick={() => onSelectAuthor?.(undefined)}
+              className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline cursor-pointer"
+              title="取消作者筛选，展示所有提交"
+            >
+              重置全部
+            </button>
+          ) : (
+            authors.length > 0 && (
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                共 {totalCommits} 提交
+              </span>
+            )
+          )}
+        </div>
+
+        {/* Section Body */}
+        {!activeRepo ? (
+          <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-[#8b949e]">
+            请选择仓库以查看贡献者
+          </div>
+        ) : isLoadingAuthors ? (
+          <div className="px-3 py-3 flex items-center justify-center gap-2 text-xs text-slate-400 dark:text-[#8b949e]">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500 shrink-0" />
+            <span>正在统计贡献者...</span>
+          </div>
+        ) : authors.length === 0 ? (
+          <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-[#8b949e]">
+            当前仓库暂无贡献者
+          </div>
+        ) : (
+          <div className="max-h-48 overflow-y-auto px-2.5 pb-2 space-y-1">
+            {authors.map(author => {
+              const isSelected = selectedAuthor === author.name;
+              const avatarColor = getAvatarColor(author.name);
+              const initials = getInitials(author.name);
+
+              return (
+                <motion.button
+                  key={`${author.name}-${author.email || ''}`}
+                  type="button"
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => onSelectAuthor?.(isSelected ? undefined : author.name)}
+                  title={`${author.name} (${author.email || '无邮箱'}) - 共 ${author.commitsCount} 次提交${
+                    isSelected ? ' (已过滤，点击显示全部)' : ' (点击筛选此作者)'
+                  }`}
+                  className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs transition-colors cursor-pointer text-left border ${
+                    isSelected
+                      ? 'bg-indigo-50/90 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-indigo-100 font-semibold shadow-2xs'
+                      : 'border-transparent hover:bg-slate-200/60 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-2xs shrink-0"
+                      style={{ backgroundColor: avatarColor }}
+                    >
+                      {initials}
+                    </div>
+                    <span className="truncate text-xs font-medium">
+                      {author.name}
+                    </span>
+                  </div>
+                  <span
+                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full shrink-0 ${
+                      isSelected
+                        ? 'bg-indigo-200/80 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-200 font-medium'
+                        : 'bg-slate-200/60 dark:bg-[#30363d] text-slate-500 dark:text-slate-400'
+                    }`}
+                  >
+                    {author.commitsCount}
+                  </span>
+                </motion.button>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }

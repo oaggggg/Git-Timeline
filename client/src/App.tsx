@@ -7,7 +7,6 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { DateGroupHeader, DateFilterRange, DATE_FILTER_OPTIONS } from './components/timeline/DateGroupHeader';
 import { CommitCard } from './components/timeline/CommitCard';
-import { AuthorsShowcase } from './components/timeline/AuthorsShowcase';
 import { fetchCommits, fetchBranches, fetchAuthors } from './services/api';
 import { CommitItem, BranchItem, TagItem, CommitFilterOptions, AuthorItem } from './types';
 import { groupCommitsByDate } from './utils/date';
@@ -229,7 +228,16 @@ function MainTimeline() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-[#0d1117] text-slate-900 dark:text-[#e6edf3]">
       {/* Left Workspace Sidebar */}
-      <Sidebar onOpenRepo={handleOpenNativeRepo} isOpeningRepo={isOpeningRepo} />
+      <Sidebar 
+        onOpenRepo={handleOpenNativeRepo} 
+        isOpeningRepo={isOpeningRepo}
+        authors={authors}
+        selectedAuthor={filterOptions.author}
+        onSelectAuthor={authorName => {
+          handleFilterChange({ author: authorName, skip: 0 });
+        }}
+        isLoadingAuthors={isLoadingAuthors}
+      />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden [contain:content]">
@@ -240,18 +248,6 @@ function MainTimeline() {
           onRefresh={handleRefresh}
           isLoading={isLoading}
         />
-
-        {/* Authors Showcase Area */}
-        {activeRepo && (
-          <AuthorsShowcase
-            authors={authors}
-            selectedAuthor={filterOptions.author}
-            onSelectAuthor={authorName => {
-              handleFilterChange({ author: authorName, skip: 0 });
-            }}
-            isLoading={isLoadingAuthors}
-          />
-        )}
 
         {/* Timeline Scroll Area - top-0 aligned so sticky date headers work perfectly */}
         <main className="flex-1 overflow-y-auto px-4 md:px-8 pb-16">
