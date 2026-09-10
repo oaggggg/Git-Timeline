@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CommitItem } from '../../types';
@@ -29,26 +29,26 @@ interface ModeOption {
 const MODES: ModeOption[] = [
   {
     key: 'mixed',
-    title: '混合回退 (--mixed)',
-    badge: '推荐模式',
+    title: '回到此版本，保留我写的所有代码 (--mixed)',
+    badge: '新手首选 · 绝对安全',
     badgeType: 'safe',
-    desc: '撤销该节点之后的所有提交，改动完整保留在本地工作区（未暂存），随时可重新修改。代码绝不丢失。',
+    desc: '最安全温和的回退方式。撤销指定提交，但您写的所有改动都会完整保留在本地文件里（未暂存），随时可重新修改。代码绝不丢失。',
     icon: ShieldCheck
   },
   {
     key: 'soft',
-    title: '软回退 (--soft)',
-    badge: '保留暂存',
+    title: '回到此版本，改动自动放进待提交清单 (--soft)',
+    badge: '安全 · 便于整理',
     badgeType: 'default',
-    desc: '撤销该节点之后的所有提交，所有改动继续保留在暂存区（Staged），适合微调说明后快速重新提交。',
+    desc: '撤销指定提交，改动继续完整保留在暂存区（Staged），适合微调提交说明或补充新修改后重新提交。',
     icon: RefreshCw
   },
   {
     key: 'hard',
-    title: '强行回退 (--hard)',
-    badge: '不可逆操作',
+    title: '彻底还原到当年的状态，不保留后续改动 (--hard)',
+    badge: '高危慎用 · 彻底清空',
     badgeType: 'danger',
-    desc: '彻底丢弃此提交之后的所有代码修改与工作区变动，整个仓库强制还原到该提交时的纯净历史状态。',
+    desc: '彻底丢弃指定提交之后的所有代码修改，仓库强制还原成历史原貌。后续代码将被永久抹去，新手请勿随意使用。',
     icon: AlertTriangle
   }
 ];
@@ -220,7 +220,7 @@ export const RollbackModal: React.FC<RollbackModalProps> = ({
               </div>
 
               {/* Hard Mode Red Warning Alert */}
-              {mode === 'hard' && (
+              {mode === 'hard' ? (
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -230,6 +230,18 @@ export const RollbackModal: React.FC<RollbackModalProps> = ({
                   <div>
                     <span className="font-bold">高风险警示：</span>
                     当前分支在此提交之后的所有改动将彻底抹除并不可找回。请确认无重要修改遗留！
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs flex items-start gap-2 leading-relaxed"
+                >
+                  <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+                  <div>
+                    <span className="font-bold">安全保障：</span>
+                    当前模式绝对不会删除您的任何实际代码文件。回退后您依然可以在文件列表或编辑器中看到修改内容。
                   </div>
                 </motion.div>
               )}

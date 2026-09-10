@@ -314,7 +314,7 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
                       transition={{ duration: 0.15 }}
                       className={`absolute right-0 ${
                         menuPlacement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
-                      } w-56 p-1.5 rounded-2xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] shadow-2xl z-50 space-y-1 text-xs`}
+                      } w-64 p-1.5 rounded-2xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] shadow-2xl z-50 space-y-1 text-xs`}
                       onClick={e => e.stopPropagation()}
                     >
                       <div className="font-semibold text-slate-400 text-[10px] px-2.5 py-1 uppercase tracking-wider">
@@ -331,8 +331,11 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
                       >
                         <RotateCcw className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                         <div>
-                          <div className="font-semibold text-xs text-slate-800 dark:text-slate-100">回退分支至此 (Reset)</div>
-                          <div className="text-[10px] text-slate-400 dark:text-[#8b949e]">提供 Soft / Mixed / Hard 三种模式</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-xs text-slate-800 dark:text-slate-100">回退到这个版本</span>
+                            <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">安全首选</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 dark:text-[#8b949e]">代码不会丢失，随时可重新修改</div>
                         </div>
                       </button>
 
@@ -344,8 +347,11 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
                       >
                         <Undo2 className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
                         <div>
-                          <div className="font-semibold text-xs text-slate-800 dark:text-slate-100">撤销此提交 (Revert)</div>
-                          <div className="text-[10px] text-slate-400 dark:text-[#8b949e]">生成抵消变动的新提交，安全不改历史</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-xs text-slate-800 dark:text-slate-100">撤销此提交 (反向抵消)</span>
+                            <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">团队推荐</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 dark:text-[#8b949e]">自动生成新提交抵消变动，安全不破坏历史</div>
                         </div>
                       </button>
 
@@ -357,10 +363,13 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
                           setShowActionMenu(false);
                           setIsBranchModalOpen(true);
                         }}
-                        className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                        className="w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
                       >
-                        <GitBranch className="w-4 h-4 text-emerald-500 shrink-0" />
-                        <span>从此处检出新分支</span>
+                        <GitBranch className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-semibold text-xs text-slate-800 dark:text-slate-100">从此处创建新分支</div>
+                          <div className="text-[10px] text-slate-400 dark:text-[#8b949e]">从当前历史节点开启全新实验或功能</div>
+                        </div>
                       </button>
 
                       {/* Copy Hash */}
@@ -369,10 +378,10 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
                           setShowActionMenu(false);
                           copyHash(e);
                         }}
-                        className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
                       >
                         <Copy className="w-4 h-4 text-slate-400 shrink-0" />
-                        <span>复制完整 SHA</span>
+                        <span className="text-xs">复制完整提交ID (SHA)</span>
                       </button>
                     </motion.div>
                   )}

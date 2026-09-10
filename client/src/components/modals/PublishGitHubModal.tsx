@@ -218,6 +218,9 @@ export const PublishGitHubModal: React.FC<PublishGitHubModalProps> = ({
                 </div>
               ) : (
                 <form onSubmit={handlePublish} className="space-y-3.5">
+                  <div className="p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed">
+                    <span className="font-semibold">新手提示：</span> 填写您在 GitHub 上的仓库地址后，系统将自动关联远程源，并把当前分支的所有提交直接推送至云端。
+                  </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                       GitHub 仓库远程地址 (Git Remote URL)

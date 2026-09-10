@@ -9,6 +9,7 @@ import { PublishGitHubModal } from '../modals/PublishGitHubModal';
 import { CreateBranchTagModal } from '../modals/CreateBranchTagModal';
 import { CreatePrModal } from '../modals/CreatePrModal';
 import { ConfirmActionModal } from '../modals/ConfirmActionModal';
+import { BeginnerGuideModal } from '../modals/BeginnerGuideModal';
 import { ThemeSlider } from './ThemeSlider';
 import { 
   GitBranch, 
@@ -27,7 +28,8 @@ import {
   Check, 
   ChevronDown,
   Undo2,
-  Trash2
+  Trash2,
+  HelpCircle
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -68,6 +70,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false);
   const [isUndoing, setIsUndoing] = useState(false);
   const [isDiscarding, setIsDiscarding] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   // Container refs for detecting click-outside
   const branchMenuRef = useRef<HTMLDivElement>(null);
@@ -427,12 +430,12 @@ export const Header: React.FC<HeaderProps> = ({
               whileTap={{ scale: 0.95 }}
               onClick={() => setIsCommitModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all whitespace-nowrap shrink-0"
-              title="手动提交代码变动"
+              title="保存并提交当前写好的代码 (保存在本地/一键推送到云端)"
             >
               <GitCommit className="w-3.5 h-3.5 shrink-0" />
-              <span className="whitespace-nowrap">提交代码</span>
+              <span className="whitespace-nowrap">保存并提交</span>
               {pendingChangesCount > 0 && (
-                <span className="w-4 h-4 rounded-full bg-white/25 text-[10px] flex items-center justify-center font-bold shrink-0">
+                <span className="w-4 h-4 rounded-full bg-white/25 text-[10px] flex items-center justify-center font-bold shrink-0" title={`${pendingChangesCount} 个待保存的变动文件`}>
                   {pendingChangesCount}
                 </span>
               )}
@@ -444,10 +447,10 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={handlePull}
               disabled={isPulling}
               className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs whitespace-nowrap shrink-0"
-              title="拉取远程更新 (git pull)"
+              title="拉取远程更新 (把云端最新变动同步到本地电脑)"
             >
               <ArrowDownToLine className={`w-3.5 h-3.5 text-indigo-500 shrink-0 ${isPulling ? 'animate-bounce' : ''}`} />
-              <span className="whitespace-nowrap">{isPulling ? '拉取中...' : '拉取'}</span>
+              <span className="whitespace-nowrap">{isPulling ? '拉取中...' : '拉取最新'}</span>
             </motion.button>
 
             {/* Push Button */}
@@ -456,10 +459,10 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={handlePush}
               disabled={isPushing}
               className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs whitespace-nowrap shrink-0"
-              title="推送到远程 (git push)"
+              title="推送到远程 (把本地存好的历史记录上传到 GitHub)"
             >
               <ArrowUpFromLine className={`w-3.5 h-3.5 text-indigo-500 shrink-0 ${isPushing ? 'animate-bounce' : ''}`} />
-              <span className="whitespace-nowrap">{isPushing ? '推送中...' : '推送'}</span>
+              <span className="whitespace-nowrap">{isPushing ? '推送中...' : '推送到云端'}</span>
             </motion.button>
 
             {/* Publish to GitHub Button */}
@@ -498,82 +501,103 @@ export const Header: React.FC<HeaderProps> = ({
 
               <AnimatePresence>
                 {showMoreMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute left-0 mt-2 w-48 p-1.5 rounded-2xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] shadow-2xl z-40 space-y-1 text-xs"
-                  >
-                    <button
-                      onClick={() => {
-                        setShowMoreMenu(false);
-                        setIsPrModalOpen(true);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute left-0 mt-2 w-64 p-2 rounded-2xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] shadow-2xl z-40 space-y-1 text-xs"
                     >
-                      <GitPullRequest className="w-3.5 h-3.5 text-indigo-500" />
-                      <span>提交 PR (Pull Request)</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMoreMenu(false);
-                        setBranchTagModalMode('branch');
-                        setIsBranchTagModalOpen(true);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
-                    >
-                      <GitBranch className="w-3.5 h-3.5 text-indigo-500" />
-                      <span>新建分支</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMoreMenu(false);
-                        setBranchTagModalMode('tag');
-                        setIsBranchTagModalOpen(true);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
-                    >
-                      <Tag className="w-3.5 h-3.5 text-emerald-500" />
-                      <span>打版本标签 (Tag)</span>
-                    </button>
-                    <div className="border-t border-slate-100 dark:border-[#30363d] my-1" />
-                    <button
-                      onClick={() => handleStash('stash')}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
-                    >
-                      <Archive className="w-3.5 h-3.5 text-amber-500" />
-                      <span>暂存工作区 (Stash)</span>
-                    </button>
-                    <button
-                      onClick={() => handleStash('pop')}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
-                    >
-                      <ArchiveRestore className="w-3.5 h-3.5 text-amber-500" />
-                      <span>恢复暂存 (Stash Pop)</span>
-                    </button>
-                    <div className="border-t border-slate-100 dark:border-[#30363d] my-1" />
-                    <button
-                      onClick={() => {
-                        setShowMoreMenu(false);
-                        setIsUndoModalOpen(true);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-600 dark:text-amber-400 transition-colors"
-                    >
-                      <Undo2 className="w-3.5 h-3.5 text-amber-500" />
-                      <span>撤回上次提交 (Undo)</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMoreMenu(false);
-                        setIsDiscardModalOpen(true);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                      <span>放弃工作区修改</span>
-                    </button>
-                  </motion.div>
+                      <button
+                        onClick={() => {
+                          setShowMoreMenu(false);
+                          setIsPrModalOpen(true);
+                        }}
+                        className="w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                      >
+                        <GitPullRequest className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-semibold text-xs">提交 PR (Pull Request)</div>
+                          <div className="text-[10px] text-slate-400 dark:text-[#8b949e]">请求合并：发起代码评审合并进主干</div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMoreMenu(false);
+                          setBranchTagModalMode('branch');
+                          setIsBranchTagModalOpen(true);
+                        }}
+                        className="w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                      >
+                        <GitBranch className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-semibold text-xs">新建分支 (Branch)</div>
+                          <div className="text-[10px] text-slate-400 dark:text-[#8b949e]">安全沙盒：独立平行路线，不影响主干</div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMoreMenu(false);
+                          setBranchTagModalMode('tag');
+                          setIsBranchTagModalOpen(true);
+                        }}
+                        className="w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                      >
+                        <Tag className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-semibold text-xs">打版本标签 (Tag)</div>
+                          <div className="text-[10px] text-slate-400 dark:text-[#8b949e]">里程碑：给重要发布盖戳 (如 v1.0.0)</div>
+                        </div>
+                      </button>
+                      <div className="border-t border-slate-100 dark:border-[#30363d] my-1" />
+                      <button
+                        onClick={() => handleStash('stash')}
+                        className="w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                      >
+                        <Archive className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-semibold text-xs">暂存工作区 (Stash)</div>
+                          <div className="text-[10px] text-slate-400 dark:text-[#8b949e]">临时收纳：手头活临时藏起，清理工作区</div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => handleStash('pop')}
+                        className="w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                      >
+                        <ArchiveRestore className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-semibold text-xs">恢复暂存 (Stash Pop)</div>
+                          <div className="text-[10px] text-slate-400 dark:text-[#8b949e]">取回收纳：把刚才收起的改动放出来继续写</div>
+                        </div>
+                      </button>
+                      <div className="border-t border-slate-100 dark:border-[#30363d] my-1" />
+                      <button
+                        onClick={() => {
+                          setShowMoreMenu(false);
+                          setIsUndoModalOpen(true);
+                        }}
+                        className="w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-600 dark:text-amber-400 transition-colors"
+                      >
+                        <Undo2 className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-semibold text-xs">撤回上次提交 (Undo)</div>
+                          <div className="text-[10px] text-amber-600/80 dark:text-amber-400/80">安全后悔药：撤回上个记录，代码完好保留</div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMoreMenu(false);
+                          setIsDiscardModalOpen(true);
+                        }}
+                        className="w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-semibold text-xs">放弃工作区修改 (Discard)</div>
+                          <div className="text-[10px] text-rose-500/80 dark:text-rose-400/80">清空草稿：彻底放弃未保存改动</div>
+                        </div>
+                      </button>
+                    </motion.div>
                 )}
               </AnimatePresence>
             </div>
@@ -644,6 +668,17 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </AnimatePresence>
         </div>
+
+        {/* Beginner Guide Button */}
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setIsGuideOpen(true)}
+          className="flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-full bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/80 dark:border-indigo-800/80 shadow-xs transition-colors shrink-0 text-xs font-semibold"
+          title="新手快速上手指南 (常见场景与基础概念)"
+        >
+          <HelpCircle className="w-3.5 h-3.5 shrink-0" />
+          <span className="hidden sm:inline whitespace-nowrap">新手指南</span>
+        </motion.button>
 
         {/* Dynamic Sliding Theme Switcher */}
         <ThemeSlider />
@@ -724,6 +759,16 @@ export const Header: React.FC<HeaderProps> = ({
           isLoading={isDiscarding}
           onConfirm={handleConfirmDiscardChanges}
           onCancel={() => setIsDiscardModalOpen(false)}
+        />
+
+        <BeginnerGuideModal
+          isOpen={isGuideOpen}
+          onClose={() => setIsGuideOpen(false)}
+          onOpenCommit={() => setIsCommitModalOpen(true)}
+          onOpenBranch={() => {
+            setBranchTagModalMode('branch');
+            setIsBranchTagModalOpen(true);
+          }}
         />
       </>
     )}

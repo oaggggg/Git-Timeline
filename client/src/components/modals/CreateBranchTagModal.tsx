@@ -136,6 +136,11 @@ export const CreateBranchTagModal: React.FC<CreateBranchTagModalProps> = ({
                   }}
                   className="w-full px-3.5 py-2 text-xs rounded-2xl bg-slate-50 dark:bg-[#0d1117] border border-slate-200 dark:border-[#30363d] focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:outline-none dark:text-slate-200 placeholder-slate-400 font-mono transition-all"
                 />
+                <p className="mt-1.5 text-[11px] text-slate-400 dark:text-[#8b949e] leading-relaxed">
+                  {isBranch 
+                    ? '分支就像平行宇宙，让您安全尝试新代码而不破坏主线。推荐如：feature/login' 
+                    : '版本标签用于标记里程碑版本（如正式发布），如同给历史夹入永久书签。'}
+                </p>
               </div>
 
               {!isBranch && (

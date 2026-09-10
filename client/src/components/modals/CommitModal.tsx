@@ -25,13 +25,13 @@ interface CommitModalProps {
 }
 
 const COMMIT_TYPES = [
-  { prefix: 'feat: ', label: '新功能 (feat)' },
-  { prefix: 'fix: ', label: '修复问题 (fix)' },
-  { prefix: 'docs: ', label: '文档更新 (docs)' },
-  { prefix: 'style: ', label: '格式调整 (style)' },
-  { prefix: 'refactor: ', label: '代码重构 (refactor)' },
-  { prefix: 'perf: ', label: '性能优化 (perf)' },
-  { prefix: 'chore: ', label: '构建杂项 (chore)' },
+  { prefix: 'feat: ', label: '新增功能 (feat:)' },
+  { prefix: 'fix: ', label: '修复缺陷 (fix:)' },
+  { prefix: 'docs: ', label: '文档说明 (docs:)' },
+  { prefix: 'style: ', label: '界面美化 (style:)' },
+  { prefix: 'refactor: ', label: '整理重构 (refactor:)' },
+  { prefix: 'perf: ', label: '运行加速 (perf:)' },
+  { prefix: 'chore: ', label: '构建配置 (chore:)' },
 ];
 
 export const CommitModal: React.FC<CommitModalProps> = ({
@@ -202,7 +202,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                    手动提交代码 (Git Commit)
+                    保存并提交修改 (Commit)
                   </h3>
                   <div className="text-[11px] text-slate-400 dark:text-[#8b949e]">
                     当前分支：<span className="font-semibold text-indigo-600 dark:text-indigo-400">{status?.branch || 'HEAD'}</span>
@@ -230,6 +230,15 @@ export const CommitModal: React.FC<CommitModalProps> = ({
 
             {/* Modal Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Beginner Helper Tip Banner */}
+              <div className="p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 text-[11px] text-indigo-700 dark:text-indigo-300 flex items-start gap-2 leading-relaxed">
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0" />
+                <div>
+                  <span className="font-semibold">新手提示：</span>
+                  系统已默认勾选您刚修改的所有文件。填写一句话说明，点击右下方<span className="font-bold">「一键提交并推送」</span>即可同步保存到本地与云端，无需繁琐命令。
+                </div>
+              </div>
+
               {/* Changed Files Section */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -334,8 +343,8 @@ export const CommitModal: React.FC<CommitModalProps> = ({
 
             {/* Modal Footer */}
             <div className="px-6 py-3.5 bg-slate-50/70 dark:bg-[#161b22] border-t border-slate-100 dark:border-[#30363d] flex items-center justify-between shrink-0">
-              <span className="text-[11px] text-slate-400">
-                支持常规提交或一键推送到远程分支
+              <span className="text-[11px] text-slate-400 dark:text-[#8b949e]">
+                修改将安全存入历史记录，随时可回退
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -351,20 +360,22 @@ export const CommitModal: React.FC<CommitModalProps> = ({
                   type="button"
                   onClick={() => handleCommit(false)}
                   disabled={isCommitting || !status || status.files.length === 0}
-                  className="px-4 py-2 rounded-full border border-indigo-200 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 text-xs font-semibold shadow-xs disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-full border border-slate-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-300 text-xs font-semibold shadow-2xs disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                  title="仅保存在本地电脑的历史记录中，暂不上载到云端"
                 >
-                  {isCommitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GitCommit className="w-3.5 h-3.5" />}
-                  <span>仅提交</span>
+                  {isCommitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GitCommit className="w-3.5 h-3.5 text-slate-400" />}
+                  <span>仅保存在本地</span>
                 </motion.button>
                 <motion.button
                   whileTap={{ scale: 0.96 }}
                   type="button"
                   onClick={() => handleCommit(true)}
                   disabled={isCommitting || !status || status.files.length === 0}
-                  className="px-4 py-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50 transition-all flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-md shadow-indigo-500/20 disabled:opacity-50 transition-all flex items-center gap-1.5"
+                  title="保存到本地并立即推送到云端远程仓库 (新手推荐)"
                 >
                   {isCommitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
-                  <span>提交并推送</span>
+                  <span>一键提交并推送 (推荐)</span>
                 </motion.button>
               </div>
             </div>
