@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { RepoInfo } from '../types';
-import { fetchRepos, addRepo, deleteRepo, toggleStarRepo, setActiveRepo } from '../services/api';
+import { fetchRepos, addRepo, deleteRepo, toggleStarRepo, setActiveRepo, openRepoViaDialog } from '../services/api';
 
 interface RepoContextType {
   repositories: RepoInfo[];
@@ -10,6 +10,7 @@ interface RepoContextType {
   selectRepo: (id: string) => Promise<void>;
   refreshRepos: () => Promise<void>;
   addNewRepo: (path: string, name?: string) => Promise<RepoInfo>;
+  openRepoDialog: () => Promise<RepoInfo | null>;
   removeRepo: (id: string) => Promise<void>;
   toggleStar: (id: string) => Promise<void>;
 }
@@ -59,6 +60,21 @@ export const RepoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return data.repo;
   };
 
+  const openRepoDialog = async (): Promise<RepoInfo | null> => {
+    const data = await openRepoViaDialog();
+    if (data.canceled || !data.repo) {
+      return null;
+    }
+    setRepositories(prev => {
+      const filtered = prev.filter(r => r.id !== data.repo!.id);
+      return [...filtered, data.repo!];
+    });
+    if (data.activeRepoId) {
+      setActiveRepoId(data.activeRepoId);
+    }
+    return data.repo;
+  };
+
   const removeRepo = async (id: string) => {
     const res = await deleteRepo(id);
     setRepositories(prev => prev.filter(r => r.id !== id));
@@ -84,6 +100,7 @@ export const RepoProvider: React.FC<{ children: React.ReactNode }> = ({ children
         selectRepo,
         refreshRepos,
         addNewRepo,
+        openRepoDialog,
         removeRepo,
         toggleStar
       }}

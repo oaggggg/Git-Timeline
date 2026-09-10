@@ -3,6 +3,7 @@ import path from 'path';
 import { loadConfig, saveConfig, generateRepoId } from '../store/config.js';
 import { isValidGitRepo, runGitCommand } from '../git/cli.js';
 import { scanForGitRepos } from '../git/scanner.js';
+import { openFolderDialog } from '../utils/dialog.js';
 import { RepoInfo } from '../types.js';
 
 export const reposRouter = Router();
@@ -161,6 +162,66 @@ reposRouter.post('/scan', async (req, res) => {
     const resolved = path.resolve(rootPath);
     const discovered = await scanForGitRepos(resolved, maxDepth || 3);
     res.json({ repositories: discovered });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/repos/open-folder - Directly open native folder selection dialog
+reposRouter.post('/open-folder', async (req, res) => {
+  try {
+    const config = await loadConfig();
+    const activeRepo = config.repositories.find(r => r.id === config.activeRepoId);
+    const initialPath = activeRepo ? path.dirname(activeRepo.path) : undefined;
+
+    const selectedPath = await openFolderDialog(initialPath);
+    if (!selectedPath) {
+      return res.json({ canceled: true });
+    }
+
+    const resolved = path.resolve(selectedPath);
+    const valid = await isValidGitRepo(resolved);
+    if (!valid) {
+      return res.status(400).json({ 
+        error: `所选文件夹不是有效的 Git 仓库（未找到 .git 目录）：${resolved}` 
+      });
+    }
+
+    const id = generateRepoId(resolved);
+
+    // Check if already registered
+    const existing = config.repositories.find(r => r.id === id);
+    if (existing) {
+      config.activeRepoId = id;
+      await saveConfig(config);
+      return res.json({ repo: existing, activeRepoId: id, alreadyExisted: true });
+    }
+
+    const repoName = path.basename(resolved);
+    let currentBranch = 'main';
+    let lastCommitDate: string | undefined;
+
+    try {
+      const branchOut = await runGitCommand(resolved, ['branch', '--show-current']);
+      currentBranch = branchOut.trim() || 'HEAD';
+      const lastCommit = await runGitCommand(resolved, ['log', '-1', '--format=%aI']);
+      lastCommitDate = lastCommit.trim() || undefined;
+    } catch {}
+
+    const newRepo: RepoInfo = {
+      id,
+      name: repoName,
+      path: resolved,
+      currentBranch,
+      lastCommitDate,
+      isStarred: false
+    };
+
+    config.repositories.push(newRepo);
+    config.activeRepoId = id;
+    await saveConfig(config);
+
+    res.status(201).json({ repo: newRepo, activeRepoId: id });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -7,16 +7,13 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { DateGroupHeader } from './components/timeline/DateGroupHeader';
 import { CommitCard } from './components/timeline/CommitCard';
-import { AddRepoModal } from './components/modals/AddRepoModal';
-import { ScanRepoModal } from './components/modals/ScanRepoModal';
 import { fetchCommits, fetchBranches } from './services/api';
 import { CommitItem, BranchItem, TagItem, CommitFilterOptions } from './types';
 import { groupCommitsByDate } from './utils/date';
 import { 
   GitCommit, 
   Loader2, 
-  FolderPlus, 
-  FolderSearch, 
+  FolderOpen,
   AlertCircle,
   Inbox
 } from 'lucide-react';
@@ -24,7 +21,7 @@ import {
 const PAGE_SIZE = 30;
 
 function MainTimeline() {
-  const { activeRepo, isLoadingRepos } = useRepo();
+  const { activeRepo, isLoadingRepos, openRepoDialog } = useRepo();
   const { showToast } = useToast();
   const [commits, setCommits] = useState<CommitItem[]>([]);
   const [branches, setBranches] = useState<BranchItem[]>([]);
@@ -38,9 +35,22 @@ function MainTimeline() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isOpeningFolder, setIsOpeningFolder] = useState(false);
 
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isScanModalOpen, setIsScanModalOpen] = useState(false);
+  const handleOpenFolder = async () => {
+    if (isOpeningFolder) return;
+    try {
+      setIsOpeningFolder(true);
+      const repo = await openRepoDialog();
+      if (repo) {
+        showToast(`已成功打开仓库: ${repo.name}`, 'success');
+      }
+    } catch (err: any) {
+      showToast(err.message || '打开仓库失败', 'error');
+    } finally {
+      setIsOpeningFolder(false);
+    }
+  };
 
   // Sentinel ref for infinite scroll
   const observerTarget = useRef<HTMLDivElement | null>(null);
@@ -163,10 +173,7 @@ function MainTimeline() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-[#0d1117] text-slate-900 dark:text-[#e6edf3]">
       {/* Left Workspace Sidebar */}
-      <Sidebar
-        onOpenAddModal={() => setIsAddModalOpen(true)}
-        onOpenScanModal={() => setIsScanModalOpen(true)}
-      />
+      <Sidebar onOpenRepo={handleOpenFolder} />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
@@ -204,32 +211,32 @@ function MainTimeline() {
                 className="flex flex-col items-center justify-center py-28 text-center"
               >
                 <div className="w-20 h-20 rounded-3xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-5 shadow-sm">
-                  <FolderPlus className="w-10 h-10" />
+                  <FolderOpen className="w-10 h-10" />
                 </div>
                 <h2 className="text-lg font-bold mb-2 text-slate-800 dark:text-slate-100">
                   欢迎使用 Git Timeline
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-[#8b949e] max-w-sm mb-7 leading-relaxed">
-                  未选择或尚未添加任何本地 Git 仓库。你可以手动添加项目路径，或扫描父目录快速批量导入。
+                  未选择或尚未打开任何本地 Git 仓库。你可以直接选择并打开本地仓库目录。
                 </p>
-                <div className="flex items-center gap-3.5">
-                  <motion.button
-                    whileTap={{ scale: 0.96 }}
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors"
-                  >
-                    <FolderPlus className="w-4 h-4" />
-                    添加本地仓库
-                  </motion.button>
-                  <motion.button
-                    whileTap={{ scale: 0.96 }}
-                    onClick={() => setIsScanModalOpen(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-full border border-slate-300 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#21262d] transition-colors shadow-xs"
-                  >
-                    <FolderSearch className="w-4 h-4 text-indigo-500" />
-                    扫描父级目录
-                  </motion.button>
-                </div>
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  onClick={handleOpenFolder}
+                  disabled={isOpeningFolder}
+                  className="flex items-center gap-2 px-6 py-2.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-75 text-white shadow-xs transition-colors"
+                >
+                  {isOpeningFolder ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>请选择文件夹...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FolderOpen className="w-4 h-4" />
+                      <span>打开本地仓库</span>
+                    </>
+                  )}
+                </motion.button>
               </motion.div>
             )}
 
@@ -322,16 +329,6 @@ function MainTimeline() {
           </div>
         </main>
       </div>
-
-      {/* Modals */}
-      <AddRepoModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-      />
-      <ScanRepoModal
-        isOpen={isScanModalOpen}
-        onClose={() => setIsScanModalOpen(false)}
-      />
     </div>
   );
 }

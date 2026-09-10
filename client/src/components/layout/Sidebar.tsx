@@ -5,28 +5,43 @@ import { useToast } from '../../context/ToastContext';
 import { 
   GitBranch, 
   FolderGit2, 
-  Plus, 
+  FolderOpen,
+  Loader2,
   Search, 
   Star, 
   Trash2, 
   ChevronLeft, 
   ChevronRight, 
-  Clock,
-  FolderSearch
+  Clock
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
 interface SidebarProps {
-  onOpenAddModal: () => void;
-  onOpenScanModal: () => void;
+  onOpenRepo?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onOpenAddModal, onOpenScanModal }) => {
-  const { repositories, activeRepo, selectRepo, removeRepo, toggleStar } = useRepo();
+export const Sidebar: React.FC<SidebarProps> = () => {
+  const { repositories, activeRepo, selectRepo, removeRepo, toggleStar, openRepoDialog } = useRepo();
   const { showToast } = useToast();
   const [collapsed, setCollapsed] = useState(false);
   const [filterQuery, setFilterQuery] = useState('');
+  const [isOpening, setIsOpening] = useState(false);
+
+  const handleOpenRepo = async () => {
+    if (isOpening) return;
+    try {
+      setIsOpening(true);
+      const repo = await openRepoDialog();
+      if (repo) {
+        showToast(`已成功打开仓库: ${repo.name}`, 'success');
+      }
+    } catch (err: any) {
+      showToast(err.message || '打开仓库失败', 'error');
+    } finally {
+      setIsOpening(false);
+    }
+  };
 
   const filteredRepos = repositories.filter(repo =>
     repo.name.toLowerCase().includes(filterQuery.toLowerCase()) ||
@@ -78,28 +93,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenAddModal, onOpenScanModa
         </motion.button>
       </div>
 
-      {/* Action Buttons */}
+      {/* Action Button */}
       {!collapsed && (
         <div className="p-3.5 border-b border-slate-200/80 dark:border-[#30363d] space-y-2.5">
-          <div className="flex gap-2">
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={onOpenAddModal}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs hover:shadow-indigo-500/20 transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              添加仓库
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={onOpenScanModal}
-              className="flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-2xl border border-slate-200 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#21262d] transition-colors shadow-xs"
-              title="扫描指定目录"
-            >
-              <FolderSearch className="w-3.5 h-3.5 text-indigo-500" />
-              扫描
-            </motion.button>
-          </div>
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={handleOpenRepo}
+            disabled={isOpening}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-semibold rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-75 text-white shadow-xs hover:shadow-indigo-500/20 transition-all"
+          >
+            {isOpening ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>请选择文件夹...</span>
+              </>
+            ) : (
+              <>
+                <FolderOpen className="w-4 h-4" />
+                <span>打开仓库</span>
+              </>
+            )}
+          </motion.button>
 
           {/* Quick Search - Pill */}
           <div className="relative">
@@ -119,6 +133,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenAddModal, onOpenScanModa
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-4">
         {collapsed ? (
           <div className="flex flex-col items-center gap-2.5">
+            <motion.button
+              whileTap={{ scale: 0.92 }}
+              onClick={handleOpenRepo}
+              disabled={isOpening}
+              title="打开仓库"
+              className="w-10 h-10 rounded-2xl flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 disabled:opacity-75 text-white shadow-xs transition-all"
+            >
+              {isOpening ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <FolderOpen className="w-4 h-4" />
+              )}
+            </motion.button>
+            <div className="w-6 h-px bg-slate-200 dark:bg-[#30363d] my-0.5" />
             {repositories.map(repo => {
               const isActive = activeRepo?.id === repo.id;
               return (
@@ -161,7 +189,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenAddModal, onOpenScanModa
               )}
               {otherRepos.length === 0 && starredRepos.length === 0 ? (
                 <div className="p-6 text-center text-xs text-slate-400 dark:text-[#8b949e] leading-relaxed">
-                  暂无匹配仓库，请点击上方“添加仓库”或“扫描”
+                  暂无匹配仓库，请点击上方“打开仓库”
                 </div>
               ) : (
                 <div className="space-y-1.5">

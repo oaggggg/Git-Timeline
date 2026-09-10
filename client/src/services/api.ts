@@ -24,6 +24,18 @@ export async function addRepo(repoPath: string, name?: string): Promise<{ repo: 
   return handleResponse(res);
 }
 
+export async function openRepoViaDialog(): Promise<{
+  canceled?: boolean;
+  repo?: RepoInfo;
+  activeRepoId?: string;
+  alreadyExisted?: boolean;
+}> {
+  const res = await fetch(`${BASE_URL}/repos/open-folder`, {
+    method: 'POST'
+  });
+  return handleResponse(res);
+}
+
 export async function deleteRepo(id: string): Promise<{ success: boolean; activeRepoId: string | null }> {
   const res = await fetch(`${BASE_URL}/repos/${id}`, {
     method: 'DELETE'
