@@ -530,19 +530,18 @@ export const Header: React.FC<HeaderProps> = ({
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setIsGitHubModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs whitespace-nowrap shrink-0"
+              className="hidden xl:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs whitespace-nowrap shrink-0"
               title="发布或同步到 GitHub"
             >
               <Globe className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span className="hidden xl:inline whitespace-nowrap">发布到 GitHub</span>
-              <span className="inline xl:hidden whitespace-nowrap">GitHub</span>
+              <span className="whitespace-nowrap">发布到 GitHub</span>
             </motion.button>
 
             {/* Create PR Button */}
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setIsPrModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs whitespace-nowrap shrink-0"
+              className="hidden 2xl:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs whitespace-nowrap shrink-0"
               title="提交代码合并请求 (Pull Request)"
             >
               <GitPullRequest className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
@@ -580,6 +579,19 @@ export const Header: React.FC<HeaderProps> = ({
                         <div>
                           <div className="font-semibold text-xs">提交 PR (Pull Request)</div>
                           <div className="text-[10px] text-slate-400 dark:text-[#8b949e]">请求合并：发起代码评审合并进主干</div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMoreMenu(false);
+                          setIsGitHubModalOpen(true);
+                        }}
+                        className="w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                      >
+                        <Globe className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-semibold text-xs">发布到 GitHub (Publish)</div>
+                          <div className="text-[10px] text-slate-400 dark:text-[#8b949e]">远程托管：将本地仓库推送到 GitHub 远程</div>
                         </div>
                       </button>
                       <button
@@ -692,7 +704,7 @@ export const Header: React.FC<HeaderProps> = ({
               <motion.div
                 key="search-expanded-box"
                 initial={{ width: 36, opacity: 0 }}
-                animate={{ width: 195, opacity: 1 }}
+                animate={{ width: 175, opacity: 1 }}
                 exit={{ width: 36, opacity: 0 }}
                 transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                 className="relative flex items-center h-8"
@@ -715,7 +727,7 @@ export const Header: React.FC<HeaderProps> = ({
                       handleCloseSearch();
                     }
                   }}
-                  className="w-full h-8 pl-8 pr-3.5 text-xs rounded-full bg-slate-100/90 dark:bg-[#0d1117] border border-indigo-500/70 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:outline-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-xs focus:ring-2 focus:ring-indigo-500/15"
+                  className="w-full h-8 pl-8 pr-3 text-xs rounded-full bg-slate-100/90 dark:bg-[#0d1117] border border-indigo-500/70 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:outline-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-xs focus:ring-2 focus:ring-indigo-500/15"
                 />
               </motion.div>
             )}
@@ -726,11 +738,11 @@ export const Header: React.FC<HeaderProps> = ({
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsGuideOpen(true)}
-          className="flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-full bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/80 dark:border-indigo-800/80 shadow-xs transition-colors shrink-0 text-xs font-semibold"
-          title="新手快速上手指南 (常见场景与基础概念)"
+          className="w-8 h-8 rounded-full flex items-center justify-center bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/80 dark:border-indigo-800/80 shadow-xs transition-colors shrink-0"
+          title="新手快速上手指南 (交互式向导与常见场景)"
+          aria-label="新手快速上手指南"
         >
-          <HelpCircle className="w-3.5 h-3.5 shrink-0" />
-          <span className="hidden sm:inline whitespace-nowrap">新手指南</span>
+          <HelpCircle className="w-4 h-4 shrink-0" />
         </motion.button>
 
         {/* Dynamic Sliding Theme Switcher */}

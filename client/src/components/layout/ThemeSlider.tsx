@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { useTheme, ThemeMode } from '../../context/ThemeContext';
 import { Sun, Moon, Laptop } from 'lucide-react';
@@ -29,12 +29,13 @@ export const ThemeSlider: React.FC = () => {
             key={option.key}
             type="button"
             onClick={() => setThemeMode(option.key)}
-            className={`relative z-10 flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full transition-colors duration-150 whitespace-nowrap ${
+            className={`relative z-10 w-7 h-7 flex items-center justify-center rounded-full transition-colors duration-150 ${
               isActive
-                ? 'text-slate-900 dark:text-white font-semibold'
+                ? 'text-slate-900 dark:text-white'
                 : 'text-slate-500 hover:text-slate-700 dark:text-[#8b949e] dark:hover:text-slate-200'
             }`}
             title={`切换为${option.label}模式`}
+            aria-label={`切换为${option.label}模式`}
           >
             {isActive && (
               <motion.div
@@ -43,10 +44,7 @@ export const ThemeSlider: React.FC = () => {
                 transition={{ type: 'spring', stiffness: 500, damping: 36 }}
               />
             )}
-            <span className="relative z-10 flex items-center gap-1.5">
-              <Icon className="w-3.5 h-3.5 shrink-0" />
-              <span className="text-[11px] whitespace-nowrap">{option.label}</span>
-            </span>
+            <Icon className="w-3.5 h-3.5 shrink-0 relative z-10" />
           </button>
         );
       })}
