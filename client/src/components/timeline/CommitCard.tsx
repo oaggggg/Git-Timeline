@@ -143,7 +143,8 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
         ease: 'easeOut',
         layout: { duration: 0.35, ease: [0.16, 1, 0.3, 1] }
       }}
-      className={`relative pl-8 pb-6 group ${showActionMenu ? 'z-30' : 'z-0'}`}
+      style={{ zIndex: showActionMenu ? 60 : 1 }}
+      className={`relative pl-8 pb-6 group ${showActionMenu ? 'z-50' : 'z-0'}`}
       onMouseEnter={() => prefetchCommitDiff(repoId, commit.hash)}
     >
       {/* Vertical Timeline Track Line */}
@@ -156,7 +157,9 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
 
       {/* Card Body - Rounded 3XL & Soft Shadow */}
       <div
-        className={`rounded-3xl border transition-all duration-200 ${
+        className={`rounded-3xl border transition-all duration-200 relative ${
+          showActionMenu ? 'z-50' : 'z-0'
+        } ${
           isDiffExpanded
             ? 'bg-white dark:bg-[#161b22] border-indigo-500/40 dark:border-indigo-500/50 shadow-md ring-2 ring-indigo-500/10'
             : 'bg-white dark:bg-[#161b22] border-slate-200/80 dark:border-[#30363d] hover:border-indigo-200 dark:hover:border-indigo-900 shadow-xs hover:shadow-md'
@@ -293,7 +296,7 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
             {/* Actions on right: Rollback / Revert Action Menu + Diff Button */}
             <div className="flex items-center gap-2">
               {/* Rollback & Visual Operations Menu */}
-              <div ref={actionMenuRef} className="relative">
+              <div ref={actionMenuRef} className={`relative ${showActionMenu ? 'z-50' : 'z-auto'}`}>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={handleToggleActionMenu}
@@ -312,6 +315,7 @@ export const CommitCard: React.FC<CommitCardProps> = ({ repoId, commit, onRefres
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: menuPlacement === 'top' ? 8 : -8, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
+                      style={{ zIndex: 999 }}
                       className={`absolute right-0 ${
                         menuPlacement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
                       } w-64 p-1.5 rounded-2xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] shadow-2xl z-50 space-y-1 text-xs`}

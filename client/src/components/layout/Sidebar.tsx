@@ -13,7 +13,8 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Clock,
-  Loader2
+  Loader2,
+  X
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -119,15 +120,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo, isOpeningRepo = fa
               collapsed ? 'max-h-0 opacity-0 pointer-events-none' : 'max-h-12 opacity-100'
             }`}
           >
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+            <div className="relative flex items-center">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none shrink-0" />
               <input
                 type="text"
                 placeholder="快速过滤仓库..."
                 value={filterQuery}
                 onChange={e => setFilterQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-full bg-slate-100/90 dark:bg-[#0d1117] border border-slate-200/60 dark:border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:outline-none dark:text-slate-200 placeholder-slate-400 transition-all"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck="false"
+                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-full bg-slate-100/90 dark:bg-[#0d1117] border border-slate-200/80 dark:border-[#30363d] focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:ring-2 focus:ring-indigo-500/20 outline-none text-slate-800 dark:text-slate-200 placeholder-slate-400 transition-all shadow-2xs"
               />
+              {filterQuery && (
+                <button
+                  type="button"
+                  onClick={() => setFilterQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                  title="清空过滤"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
           </div>
         </div>

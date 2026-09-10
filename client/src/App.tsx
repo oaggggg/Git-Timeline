@@ -5,12 +5,13 @@ import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
-import { DateGroupHeader } from './components/timeline/DateGroupHeader';
+import { DateGroupHeader, DateFilterRange, DATE_FILTER_OPTIONS } from './components/timeline/DateGroupHeader';
 import { CommitCard } from './components/timeline/CommitCard';
 import { AuthorsShowcase } from './components/timeline/AuthorsShowcase';
 import { fetchCommits, fetchBranches, fetchAuthors } from './services/api';
 import { CommitItem, BranchItem, TagItem, CommitFilterOptions, AuthorItem } from './types';
 import { groupCommitsByDate } from './utils/date';
+import { startOfDay, endOfDay, subDays, format } from 'date-fns';
 import { 
   GitCommit, 
   Loader2, 
@@ -34,6 +35,7 @@ function MainTimeline() {
     skip: 0,
     limit: PAGE_SIZE
   });
+  const [dateFilter, setDateFilter] = useState<DateFilterRange>('ALL');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -87,8 +89,11 @@ function MainTimeline() {
       skip: 0,
       limit: PAGE_SIZE,
       search: undefined,
-      author: undefined
+      author: undefined,
+      since: undefined,
+      until: undefined
     });
+    setDateFilter('ALL');
 
     fetchBranches(activeRepo.id)
       .then(res => {
@@ -180,6 +185,29 @@ function MainTimeline() {
       ...newOptions,
       skip: 0
     }));
+  };
+
+  const handleDateFilterChange = (range: DateFilterRange) => {
+    setDateFilter(range);
+    let since: string | undefined;
+    let until: string | undefined;
+
+    const now = new Date();
+    if (range === 'today') {
+      since = format(startOfDay(now), "yyyy-MM-dd'T'HH:mm:ss");
+    } else if (range === 'yesterday') {
+      const yesterday = subDays(now, 1);
+      since = format(startOfDay(yesterday), "yyyy-MM-dd'T'HH:mm:ss");
+      until = format(endOfDay(yesterday), "yyyy-MM-dd'T'HH:mm:ss");
+    } else if (range === '7days') {
+      const d7 = subDays(now, 7);
+      since = format(startOfDay(d7), "yyyy-MM-dd'T'HH:mm:ss");
+    } else if (range === '30days') {
+      const d30 = subDays(now, 30);
+      since = format(startOfDay(d30), "yyyy-MM-dd'T'HH:mm:ss");
+    }
+
+    handleFilterChange({ since, until, skip: 0 });
   };
 
   const handleRefresh = () => {
@@ -299,31 +327,58 @@ function MainTimeline() {
 
             {/* Empty state: No commits found */}
             {!isLoading && activeRepo && commits.length === 0 && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex flex-col items-center justify-center py-28 text-center"
-              >
-                <div className="p-4 rounded-3xl bg-slate-100 dark:bg-[#21262d] text-slate-400 mb-3.5">
-                  <Inbox className="w-9 h-9" />
-                </div>
-                <h3 className="text-sm font-bold mb-1.5 text-slate-700 dark:text-slate-300">
-                  没有找到匹配的提交记录
-                </h3>
-                <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-                  当前筛选条件或搜索关键词未匹配到任何提交，请重置搜索或选择其他分支。
-                </p>
-              </motion.div>
+              <div className="space-y-4">
+                <DateGroupHeader
+                  dateLabel={
+                    dateFilter === 'ALL'
+                      ? '全部时间'
+                      : (DATE_FILTER_OPTIONS.find(o => o.key === dateFilter)?.label || '日期筛选')
+                  }
+                  commitCount={0}
+                  isFirstGroup={true}
+                  activeFilter={dateFilter}
+                  onFilterChange={handleDateFilterChange}
+                />
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex flex-col items-center justify-center py-20 text-center"
+                >
+                  <div className="p-4 rounded-3xl bg-slate-100 dark:bg-[#21262d] text-slate-400 mb-3.5">
+                    <Inbox className="w-9 h-9" />
+                  </div>
+                  <h3 className="text-sm font-bold mb-1.5 text-slate-700 dark:text-slate-300">
+                    没有找到匹配的提交记录
+                  </h3>
+                  <p className="text-xs text-slate-400 max-w-xs leading-relaxed mb-4">
+                    {dateFilter !== 'ALL'
+                      ? `在所选的【${DATE_FILTER_OPTIONS.find(o => o.key === dateFilter)?.label}】时间范围内暂无提交记录`
+                      : '当前筛选条件或搜索关键词未匹配到任何提交，请重置搜索或选择其他分支。'}
+                  </p>
+                  {dateFilter !== 'ALL' && (
+                    <button
+                      type="button"
+                      onClick={() => handleDateFilterChange('ALL')}
+                      className="px-4 py-2 rounded-full text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/80 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-400 transition-colors shadow-xs"
+                    >
+                      重置为全部时间
+                    </button>
+                  )}
+                </motion.div>
+              </div>
             )}
 
             {/* Timeline Stream */}
             {activeRepo && dateGroups.length > 0 && (
               <div className="space-y-2">
-                {dateGroups.map(group => (
+                {dateGroups.map((group, index) => (
                   <div key={group.dateKey} className="relative">
                     <DateGroupHeader
                       dateLabel={group.dateLabel}
                       commitCount={group.commits.length}
+                      isFirstGroup={index === 0}
+                      activeFilter={dateFilter}
+                      onFilterChange={handleDateFilterChange}
                     />
                     <div className="mt-1" data-tour="timeline-card">
                       {group.commits.map(commit => (

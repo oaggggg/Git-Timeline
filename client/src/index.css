@@ -15,6 +15,14 @@ html, body, #root {
   overflow: hidden;
 }
 
+/* Global focus outline reset to prevent native browser rectangular ring artifacts */
+input, button, select, textarea {
+  outline: none;
+}
+input:focus, input:focus-visible {
+  outline: none !important;
+}
+
 /* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
