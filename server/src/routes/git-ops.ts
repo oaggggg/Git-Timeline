@@ -591,6 +591,43 @@ gitOpsRouter.post('/:id/branches', async (req, res) => {
   }
 });
 
+// DELETE /api/repos/:id/branches/:branchName - Delete branch
+gitOpsRouter.delete('/:id/branches/:branchName', async (req, res) => {
+  try {
+    const { id, branchName } = req.params;
+    const force = req.query.force === 'true';
+    const repoPath = await getRepoPathById(id);
+    if (!repoPath) {
+      return res.status(404).json({ error: '仓库不存在或路径无效' });
+    }
+
+    const cleanBranch = decodeURIComponent(String(branchName || '')).trim();
+    if (!cleanBranch) {
+      return res.status(400).json({ error: '分支名称不能为空' });
+    }
+
+    // Check if branch is current checked out branch
+    const currentBranchOutput = await runGitCommand(repoPath, ['branch', '--show-current']).catch(() => '');
+    if (currentBranchOutput.trim() === cleanBranch) {
+      return res.status(400).json({ error: '不能删除当前正在工作的活跃分支，请先切换至其他分支' });
+    }
+
+    // Delete local branch: -d for safe, -D for force
+    const deleteArgs = ['branch', force ? '-D' : '-d', cleanBranch];
+    await runGitCommand(repoPath, deleteArgs);
+
+    res.json({ success: true, branchName: cleanBranch, force });
+  } catch (err: any) {
+    const parsed = parseGitError(err);
+    const isUnmerged = /not fully merged/i.test(err?.message || '');
+    res.status(500).json({ 
+      error: parsed.message || err.message, 
+      isUnmerged,
+      canForce: isUnmerged
+    });
+  }
+});
+
 // POST /api/repos/:id/tags - Create new tag
 gitOpsRouter.post('/:id/tags', async (req, res) => {
   try {

@@ -191,7 +191,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-xl bg-white dark:bg-[#161b22] rounded-3xl shadow-2xl border border-slate-200/80 dark:border-[#30363d] overflow-hidden flex flex-col max-h-[85vh]"
+            className="w-full max-w-2xl bg-white dark:bg-[#161b22] rounded-3xl shadow-2xl border border-slate-200/80 dark:border-[#30363d] overflow-hidden flex flex-col max-h-[85vh]"
             onClick={e => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -342,16 +342,16 @@ export const CommitModal: React.FC<CommitModalProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3.5 bg-slate-50/70 dark:bg-[#161b22] border-t border-slate-100 dark:border-[#30363d] flex items-center justify-between shrink-0">
-              <span className="text-[11px] text-slate-400 dark:text-[#8b949e]">
+            <div className="px-6 py-4 bg-slate-50/70 dark:bg-[#161b22] border-t border-slate-100 dark:border-[#30363d] flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 shrink-0">
+              <span className="text-[11px] text-slate-400 dark:text-[#8b949e] whitespace-nowrap shrink-0 hidden md:inline">
                 修改将安全存入历史记录，随时可回退
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5 shrink-0 ml-auto">
                 <button
                   type="button"
                   onClick={onClose}
                   disabled={isCommitting}
-                  className="px-4 py-2 rounded-full border border-slate-200 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#21262d] text-xs font-semibold text-slate-600 dark:text-slate-300 transition-colors"
+                  className="px-4 py-2 rounded-full border border-slate-200 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#21262d] text-xs font-semibold text-slate-600 dark:text-slate-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                 >
                   取消
                 </button>
@@ -360,10 +360,10 @@ export const CommitModal: React.FC<CommitModalProps> = ({
                   type="button"
                   onClick={() => handleCommit(false)}
                   disabled={isCommitting || !status || status.files.length === 0}
-                  className="px-3.5 py-2 rounded-full border border-slate-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-300 text-xs font-semibold shadow-2xs disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-full border border-slate-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-300 text-xs font-semibold shadow-2xs disabled:opacity-50 transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
                   title="仅保存在本地电脑的历史记录中，暂不上载到云端"
                 >
-                  {isCommitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GitCommit className="w-3.5 h-3.5 text-slate-400" />}
+                  {isCommitting ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : <GitCommit className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
                   <span>仅保存在本地</span>
                 </motion.button>
                 <motion.button
@@ -371,10 +371,10 @@ export const CommitModal: React.FC<CommitModalProps> = ({
                   type="button"
                   onClick={() => handleCommit(true)}
                   disabled={isCommitting || !status || status.files.length === 0}
-                  className="px-4 py-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-md shadow-indigo-500/20 disabled:opacity-50 transition-all flex items-center gap-1.5"
+                  className="px-5 py-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-md shadow-indigo-500/20 disabled:opacity-50 transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
                   title="保存到本地并立即推送到云端远程仓库 (新手推荐)"
                 >
-                  {isCommitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
+                  {isCommitting ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />}
                   <span>一键提交并推送 (推荐)</span>
                 </motion.button>
               </div>

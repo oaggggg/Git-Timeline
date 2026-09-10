@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../../context/ToastContext';
 import { fetchPrInfo, createPullRequest, gitPush } from '../../services/api';
 import { PullRequestInfo, CreatePrResponse } from '../../types';
+import { CustomSelect } from '../common/CustomSelect';
 import { 
   GitPullRequest, 
   GitBranch, 
@@ -316,17 +317,15 @@ export const CreatePrModal: React.FC<CreatePrModalProps> = ({
                         <label className="block text-[10px] text-slate-500 dark:text-[#8b949e] mb-1 font-medium">
                           源分支 (Head / 你的修改)
                         </label>
-                        <select
+                        <CustomSelect
                           value={headBranch}
-                          onChange={e => setHeadBranch(e.target.value)}
-                          className="w-full px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] dark:text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
-                        >
-                          {prInfo.branches.map(b => (
-                            <option key={`head-${b}`} value={b}>
-                              {b} {b === prInfo.currentBranch ? '(当前)' : ''}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={setHeadBranch}
+                          options={prInfo.branches.map(b => ({
+                            value: b,
+                            label: b,
+                            isCurrent: b === prInfo.currentBranch
+                          }))}
+                        />
                       </div>
 
                       <ArrowRight className="w-4 h-4 text-slate-400 shrink-0 mt-5" />
@@ -336,17 +335,15 @@ export const CreatePrModal: React.FC<CreatePrModalProps> = ({
                         <label className="block text-[10px] text-slate-500 dark:text-[#8b949e] mb-1 font-medium">
                           目标分支 (Base / 合并目标)
                         </label>
-                        <select
+                        <CustomSelect
                           value={baseBranch}
-                          onChange={e => setBaseBranch(e.target.value)}
-                          className="w-full px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] dark:text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
-                        >
-                          {prInfo.branches.map(b => (
-                            <option key={`base-${b}`} value={b}>
-                              {b}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={setBaseBranch}
+                          options={prInfo.branches.map(b => ({
+                            value: b,
+                            label: b,
+                            isCurrent: b === prInfo.currentBranch
+                          }))}
+                        />
                       </div>
                     </div>
 
@@ -442,34 +439,34 @@ export const CreatePrModal: React.FC<CreatePrModalProps> = ({
                   )}
 
                   {/* Action Buttons */}
-                  <div className="flex items-center justify-between gap-3 pt-2">
+                  <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 pt-2">
                     <button
                       type="button"
                       onClick={handleOpenInBrowser}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-slate-200 dark:border-[#30363d] text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#21262d] text-xs font-semibold transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-slate-200 dark:border-[#30363d] text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#21262d] text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0"
                       title="打开 GitHub 预填充页面"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                       <span>在 GitHub 网页中对比创建</span>
                     </button>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0 ml-auto">
                       <button
                         type="button"
                         onClick={onClose}
-                        className="px-4 py-2 rounded-full text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-[#21262d] transition-colors cursor-pointer"
+                        className="px-4 py-2 rounded-full text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-[#21262d] transition-colors cursor-pointer whitespace-nowrap shrink-0"
                       >
                         取消
                       </button>
                       <button
                         type="submit"
                         disabled={isSubmitting || headBranch === baseBranch}
-                        className="px-5 py-2 rounded-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        className="px-5 py-2 rounded-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
                       >
                         {isSubmitting ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                         ) : (
-                          <GitPullRequest className="w-3.5 h-3.5" />
+                          <GitPullRequest className="w-3.5 h-3.5 shrink-0" />
                         )}
                         <span>{isSubmitting ? '提交中...' : (token.trim() ? '直接提交 PR' : '前往创建 PR')}</span>
                       </button>

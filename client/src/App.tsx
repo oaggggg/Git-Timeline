@@ -325,7 +325,7 @@ function MainTimeline() {
                       dateLabel={group.dateLabel}
                       commitCount={group.commits.length}
                     />
-                    <div className="mt-1">
+                    <div className="mt-1" data-tour="timeline-card">
                       {group.commits.map(commit => (
                         <CommitCard
                           key={commit.hash}

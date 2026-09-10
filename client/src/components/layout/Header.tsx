@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRepo } from '../../context/RepoContext';
 import { useToast } from '../../context/ToastContext';
 import { BranchItem, CommitFilterOptions } from '../../types';
-import { gitPull, gitPush, gitStash, fetchRepoStatus, gitUndoLastCommit, gitDiscardChanges } from '../../services/api';
+import { gitPull, gitPush, gitStash, fetchRepoStatus, gitUndoLastCommit, gitDiscardChanges, deleteBranch } from '../../services/api';
 import { CommitModal } from '../modals/CommitModal';
 import { PublishGitHubModal } from '../modals/PublishGitHubModal';
 import { CreateBranchTagModal } from '../modals/CreateBranchTagModal';
 import { CreatePrModal } from '../modals/CreatePrModal';
 import { ConfirmActionModal } from '../modals/ConfirmActionModal';
-import { BeginnerGuideModal } from '../modals/BeginnerGuideModal';
+import { InteractiveTour } from '../common/InteractiveTour';
 import { ThemeSlider } from './ThemeSlider';
 import { 
   GitBranch, 
@@ -70,6 +70,10 @@ export const Header: React.FC<HeaderProps> = ({
   const [isUndoing, setIsUndoing] = useState(false);
   const [isDiscarding, setIsDiscarding] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [branchToDelete, setBranchToDelete] = useState<string | null>(null);
+  const [isDeleteBranchModalOpen, setIsDeleteBranchModalOpen] = useState(false);
+  const [isDeletingBranch, setIsDeletingBranch] = useState(false);
+  const [isForceDelete, setIsForceDelete] = useState(false);
 
   // Container refs for detecting click-outside
   const branchMenuRef = useRef<HTMLDivElement>(null);
@@ -283,6 +287,41 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const handleConfirmDeleteBranch = async () => {
+    if (!activeRepo || !branchToDelete || isDeletingBranch) return;
+    setIsDeletingBranch(true);
+    const loadingToastId = showToast(`正在删除分支 "${branchToDelete}"...`, 'loading');
+    try {
+      await deleteBranch(activeRepo.id, branchToDelete, isForceDelete);
+      dismissToast(loadingToastId);
+      showToast(
+        isForceDelete
+          ? `已强制删除分支 "${branchToDelete}"`
+          : `已成功删除分支 "${branchToDelete}"`,
+        'success'
+      );
+      if (filterOptions.branch === branchToDelete) {
+        onFilterChange({ branch: 'ALL', skip: 0 });
+      }
+      setIsDeleteBranchModalOpen(false);
+      setBranchToDelete(null);
+      setIsForceDelete(false);
+      onRefresh();
+    } catch (err: any) {
+      dismissToast(loadingToastId);
+      if (err.canForce || /not fully merged/i.test(err.message || '')) {
+        setIsForceDelete(true);
+      } else {
+        showToast(err.message || '删除分支失败', 'error');
+        setIsDeleteBranchModalOpen(false);
+        setBranchToDelete(null);
+        setIsForceDelete(false);
+      }
+    } finally {
+      setIsDeletingBranch(false);
+    }
+  };
+
   const activeBranch = filterOptions.branch || 'ALL';
 
   return (
@@ -308,7 +347,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Custom Rounded Pill Branch Selector */}
         {activeRepo && (
-          <div ref={branchMenuRef} className="relative shrink-0">
+          <div ref={branchMenuRef} data-tour="branch-selector" className="relative shrink-0">
             <motion.button
               whileTap={{ scale: 0.96 }}
               onClick={() => setShowBranchMenu(!showBranchMenu)}
@@ -332,7 +371,7 @@ export const Header: React.FC<HeaderProps> = ({
                   className="absolute left-0 mt-2 w-64 p-2 rounded-2xl bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] shadow-2xl z-40 space-y-1 text-xs max-h-80 overflow-y-auto"
                 >
                   <div className="font-semibold text-slate-400 text-[11px] px-2.5 py-1 uppercase tracking-wider">
-                    分支切换
+                    分支切换与管理
                   </div>
                   
                   {/* All branches option */}
@@ -348,7 +387,7 @@ export const Header: React.FC<HeaderProps> = ({
                     }`}
                   >
                     <span>全部分支 (--all)</span>
-                    {activeBranch === 'ALL' && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />}
+                    {activeBranch === 'ALL' && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />}
                   </button>
 
                   {/* Local Branches */}
@@ -360,28 +399,50 @@ export const Header: React.FC<HeaderProps> = ({
                     .map(b => {
                       const isSelected = activeBranch === b.name;
                       return (
-                        <button
+                        <div
                           key={b.name}
-                          onClick={() => {
-                            onFilterChange({ branch: b.name, skip: 0 });
-                            setShowBranchMenu(false);
-                          }}
-                          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-left transition-colors ${
+                          className={`w-full group flex items-center justify-between px-3 py-1.5 rounded-xl transition-colors ${
                             isSelected
                               ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold'
                               : 'hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-300'
                           }`}
                         >
-                          <div className="flex items-center gap-2 truncate">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onFilterChange({ branch: b.name, skip: 0 });
+                              setShowBranchMenu(false);
+                            }}
+                            className="flex items-center gap-2 truncate flex-1 text-left min-w-0"
+                          >
                             <span className="truncate">{b.name}</span>
                             {b.current && (
-                              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 shrink-0">
                                 HEAD
                               </span>
                             )}
+                          </button>
+
+                          <div className="flex items-center gap-1 shrink-0 ml-1.5">
+                            {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />}
+                            {!b.current && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setBranchToDelete(b.name);
+                                  setIsForceDelete(false);
+                                  setIsDeleteBranchModalOpen(true);
+                                  setShowBranchMenu(false);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-rose-100 dark:hover:bg-rose-950/60 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-all"
+                                title={`删除本地分支 ${b.name}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                              </button>
+                            )}
                           </div>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />}
-                        </button>
+                        </div>
                       );
                     })}
 
@@ -423,12 +484,13 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Visual Git Actions Toolbar */}
         {activeRepo && (
-          <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200/80 dark:border-[#30363d] shrink-0">
+          <div data-tour="actions-toolbar" className="flex items-center gap-1.5 pl-2 border-l border-slate-200/80 dark:border-[#30363d] shrink-0">
             {/* Manual Commit Button */}
             <motion.button
+              data-tour="commit-btn"
               whileTap={{ scale: 0.95 }}
               onClick={() => setIsCommitModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all whitespace-nowrap shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all whitespace-nowrap shrink-0 cursor-pointer"
               title="保存并提交当前写好的代码 (保存在本地/一键推送到云端)"
             >
               <GitCommit className="w-3.5 h-3.5 shrink-0" />
@@ -605,7 +667,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Center/Right: Expandable Search, Theme Slider, Refresh */}
-      <div className="flex items-center gap-2.5 shrink-0">
+      <div data-tour="search-and-theme" className="flex items-center gap-2.5 shrink-0">
         {/* Expandable Search Component */}
         <div ref={searchContainerRef} className="relative shrink-0 flex items-center">
           <AnimatePresence initial={false} mode="wait">
@@ -752,13 +814,29 @@ export const Header: React.FC<HeaderProps> = ({
           onCancel={() => setIsDiscardModalOpen(false)}
         />
 
-        <BeginnerGuideModal
+        <InteractiveTour
           isOpen={isGuideOpen}
           onClose={() => setIsGuideOpen(false)}
-          onOpenCommit={() => setIsCommitModalOpen(true)}
-          onOpenBranch={() => {
-            setBranchTagModalMode('branch');
-            setIsBranchTagModalOpen(true);
+        />
+
+        <ConfirmActionModal
+          isOpen={isDeleteBranchModalOpen}
+          title={isForceDelete ? `强制删除分支 "${branchToDelete}"` : `删除本地分支 "${branchToDelete}"`}
+          description={
+            isForceDelete
+              ? `警告：分支 "${branchToDelete}" 包含尚未合并到当前分支的代码改动。如果强制删除 (git branch -D)，这些提交将被彻底丢弃且无法找回。确定要强制删除吗？`
+              : `确定要从本地仓库删除分支 "${branchToDelete}" 吗？该操作将删除该分支的指针 (git branch -d)。`
+          }
+          badge={isForceDelete ? "高风险警告：包含未合并提交" : "安全保护：若有未合并改动将被系统保护拒绝"}
+          confirmLabel={isForceDelete ? "确定强制删除" : "确认删除分支"}
+          variant="danger"
+          icon={<Trash2 className="w-6 h-6 text-rose-500" />}
+          isLoading={isDeletingBranch}
+          onConfirm={handleConfirmDeleteBranch}
+          onCancel={() => {
+            setIsDeleteBranchModalOpen(false);
+            setBranchToDelete(null);
+            setIsForceDelete(false);
           }}
         />
       </>

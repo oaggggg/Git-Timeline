@@ -260,7 +260,7 @@ export const RollbackModal: React.FC<RollbackModalProps> = ({
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="px-4 py-2 text-xs font-semibold rounded-full border border-slate-200 dark:border-[#30363d] text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#21262d] transition-colors"
+                className="px-4 py-2 text-xs font-semibold rounded-full border border-slate-200 dark:border-[#30363d] text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#21262d] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
               >
                 取消
               </button>
@@ -270,7 +270,7 @@ export const RollbackModal: React.FC<RollbackModalProps> = ({
                 type="button"
                 onClick={handleExecuteReset}
                 disabled={isSubmitting}
-                className={`flex items-center gap-1.5 px-5 py-2 text-xs font-semibold rounded-full text-white shadow-xs transition-colors ${
+                className={`flex items-center gap-1.5 px-5 py-2 text-xs font-semibold rounded-full text-white shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                   mode === 'hard'
                     ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/20'
                     : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20'

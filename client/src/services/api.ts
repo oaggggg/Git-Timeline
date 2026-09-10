@@ -223,6 +223,19 @@ export async function createBranch(
   return handleResponse(res);
 }
 
+// Delete Branch
+export async function deleteBranch(
+  repoId: string,
+  branchName: string,
+  force = false
+): Promise<{ success: boolean; branchName: string; force?: boolean }> {
+  const query = force ? '?force=true' : '';
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/branches/${encodeURIComponent(branchName)}${query}`, {
+    method: 'DELETE'
+  });
+  return handleResponse(res);
+}
+
 // Create Tag
 export async function createTag(
   repoId: string,
