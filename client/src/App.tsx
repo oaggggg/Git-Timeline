@@ -7,6 +7,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { DateGroupHeader } from './components/timeline/DateGroupHeader';
 import { CommitCard } from './components/timeline/CommitCard';
+import { OpenRepoModal } from './components/modals/OpenRepoModal';
 import { fetchCommits, fetchBranches } from './services/api';
 import { CommitItem, BranchItem, TagItem, CommitFilterOptions } from './types';
 import { groupCommitsByDate } from './utils/date';
@@ -35,22 +36,7 @@ function MainTimeline() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isOpeningFolder, setIsOpeningFolder] = useState(false);
-
-  const handleOpenFolder = async () => {
-    if (isOpeningFolder) return;
-    try {
-      setIsOpeningFolder(true);
-      const repo = await openRepoDialog();
-      if (repo) {
-        showToast(`已成功打开仓库: ${repo.name}`, 'success');
-      }
-    } catch (err: any) {
-      showToast(err.message || '打开仓库失败', 'error');
-    } finally {
-      setIsOpeningFolder(false);
-    }
-  };
+  const [isOpenRepoModalOpen, setIsOpenRepoModalOpen] = useState(false);
 
   // Sentinel ref for infinite scroll
   const observerTarget = useRef<HTMLDivElement | null>(null);
@@ -173,7 +159,7 @@ function MainTimeline() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-[#0d1117] text-slate-900 dark:text-[#e6edf3]">
       {/* Left Workspace Sidebar */}
-      <Sidebar onOpenRepo={handleOpenFolder} />
+      <Sidebar onOpenRepo={() => setIsOpenRepoModalOpen(true)} />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
@@ -221,21 +207,11 @@ function MainTimeline() {
                 </p>
                 <motion.button
                   whileTap={{ scale: 0.96 }}
-                  onClick={handleOpenFolder}
-                  disabled={isOpeningFolder}
-                  className="flex items-center gap-2 px-6 py-2.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-75 text-white shadow-xs transition-colors"
+                  onClick={() => setIsOpenRepoModalOpen(true)}
+                  className="flex items-center gap-2 px-6 py-2.5 text-xs font-semibold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors"
                 >
-                  {isOpeningFolder ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>请选择文件夹...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FolderOpen className="w-4 h-4" />
-                      <span>打开本地仓库</span>
-                    </>
-                  )}
+                  <FolderOpen className="w-4 h-4" />
+                  <span>打开本地仓库</span>
                 </motion.button>
               </motion.div>
             )}
@@ -329,6 +305,12 @@ function MainTimeline() {
           </div>
         </main>
       </div>
+
+      {/* Open Repo Modal */}
+      <OpenRepoModal
+        isOpen={isOpenRepoModalOpen}
+        onClose={() => setIsOpenRepoModalOpen(false)}
+      />
     </div>
   );
 }

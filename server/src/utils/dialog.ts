@@ -1,7 +1,4 @@
 import { execFile } from 'child_process';
-import { promisify } from 'util';
-
-const execFileAsync = promisify(execFile);
 
 export async function openFolderDialog(initialPath?: string): Promise<string | null> {
   if (process.platform === 'win32') {
@@ -15,52 +12,69 @@ $dialog.ShowNewFolderButton = $false;
 if ('${escapedInitial}' -ne '' -and (Test-Path -LiteralPath '${escapedInitial}')) {
     $dialog.SelectedPath = '${escapedInitial}';
 }
-$topForm = New-Object System.Windows.Forms.Form;
-$topForm.TopMost = $true;
-$topForm.Width = 0;
-$topForm.Height = 0;
-$topForm.StartPosition = 'CenterScreen';
-$res = $dialog.ShowDialog($topForm);
+$res = $dialog.ShowDialog();
 if ($res -eq [System.Windows.Forms.DialogResult]::OK) {
     Write-Output $dialog.SelectedPath;
 } else {
     Write-Output '__CANCELLED__';
 }
 `;
-    try {
-      const { stdout } = await execFileAsync(
+    return new Promise<string | null>((resolve) => {
+      let isSettled = false;
+      const child = execFile(
         'powershell',
         ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA', '-Command', psScript],
-        { encoding: 'utf8', windowsHide: true }
+        { encoding: 'utf8' },
+        (err, stdout) => {
+          if (isSettled) return;
+          isSettled = true;
+          if (err) {
+            console.error('Folder dialog error:', err);
+            resolve(null);
+            return;
+          }
+          const lines = (stdout || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+          const selected = lines[lines.length - 1];
+          if (!selected || selected === '__CANCELLED__') {
+            resolve(null);
+          } else {
+            resolve(selected);
+          }
+        }
       );
-      const lines = stdout.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-      const selected = lines[lines.length - 1];
-      if (!selected || selected === '__CANCELLED__') {
-        return null;
-      }
-      return selected;
-    } catch (err) {
-      console.error('Failed to open native folder dialog:', err);
-      return null;
-    }
+
+      // Safety timeout after 60s
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          try {
+            child.kill();
+          } catch {}
+          resolve(null);
+        }
+      }, 60000);
+
+      child.on('exit', () => clearTimeout(timer));
+    });
   } else if (process.platform === 'darwin') {
     const osaScript = `POSIX path of (choose folder with prompt "请选择 Git 仓库文件夹")`;
-    try {
-      const { stdout } = await execFileAsync('osascript', ['-e', osaScript], { encoding: 'utf8' });
-      return stdout.trim() || null;
-    } catch {
-      return null;
-    }
+    return new Promise<string | null>((resolve) => {
+      execFile('osascript', ['-e', osaScript], { encoding: 'utf8' }, (err, stdout) => {
+        if (err || !stdout) return resolve(null);
+        resolve(stdout.trim() || null);
+      });
+    });
   } else {
-    try {
-      const { stdout } = await execFileAsync(
+    return new Promise<string | null>((resolve) => {
+      execFile(
         'zenity',
         ['--file-selection', '--directory', '--title=请选择 Git 仓库文件夹'],
-        { encoding: 'utf8' }
+        { encoding: 'utf8' },
+        (err, stdout) => {
+          if (err || !stdout) return resolve(null);
+          resolve(stdout.trim() || null);
+        }
       );
-      return stdout.trim() || null;
-    } catch {
-      return null;
-    }
+    });
   }
 }
