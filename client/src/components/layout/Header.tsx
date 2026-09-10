@@ -24,7 +24,6 @@ import {
   MoreHorizontal,
   Search, 
   RotateCw, 
-  X, 
   Check, 
   ChevronDown,
   Undo2,
@@ -143,8 +142,8 @@ export const Header: React.FC<HeaderProps> = ({
         setShowMoreMenu(false);
       }
       if (searchContainerRef.current && !searchContainerRef.current.contains(target)) {
-        if (!filterOptions.search) {
-          setIsSearchExpanded(false);
+        if (isSearchExpanded) {
+          handleCloseSearch();
         }
       }
     };
@@ -631,7 +630,7 @@ export const Header: React.FC<HeaderProps> = ({
               <motion.div
                 key="search-expanded-box"
                 initial={{ width: 36, opacity: 0 }}
-                animate={{ width: 270, opacity: 1 }}
+                animate={{ width: 195, opacity: 1 }}
                 exit={{ width: 36, opacity: 0 }}
                 transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                 className="relative flex items-center h-8"
@@ -646,24 +645,16 @@ export const Header: React.FC<HeaderProps> = ({
                   }}
                   autoFocus
                   type="text"
-                  placeholder="搜索提交、作者、SHA (ESC 退出)"
+                  placeholder="搜索提交、作者、SHA"
                   value={filterOptions.search || ''}
-                  onChange={e => onFilterChange({ search: e.target.value, skip: 0 })}
+                  onChange={e => onFilterChange({ search: e.target.value || undefined, skip: 0 })}
                   onKeyDown={e => {
                     if (e.key === 'Escape') {
                       handleCloseSearch();
                     }
                   }}
-                  className="w-full h-8 pl-8 pr-8 text-xs rounded-full bg-slate-100/90 dark:bg-[#0d1117] border border-indigo-500/70 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:outline-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-xs focus:ring-2 focus:ring-indigo-500/15 truncate"
+                  className="w-full h-8 pl-8 pr-3.5 text-xs rounded-full bg-slate-100/90 dark:bg-[#0d1117] border border-indigo-500/70 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:outline-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-xs focus:ring-2 focus:ring-indigo-500/15"
                 />
-                <button
-                  type="button"
-                  onClick={handleCloseSearch}
-                  className="absolute right-2 p-0.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-[#30363d] transition-colors"
-                  title="取消搜索并清空 (按 ESC)"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
               </motion.div>
             )}
           </AnimatePresence>
