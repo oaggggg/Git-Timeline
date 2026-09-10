@@ -12,8 +12,22 @@ import {
 
 export const gitOpsRouter = Router();
 
-function parseGitError(err: any): { code: string; message: string } {
+export function parseGitError(err: any): { code: string; message: string } {
   const raw = String(err?.message || err || '');
+
+  if (/could not resolve proxy|failed to connect to (?:127\.0\.0\.1|localhost|\[?::1\]?)\b|failed to connect to [^\r\n]+ or proxy (?:127\.0\.0\.1|localhost|\[?::1\]?)/i.test(raw)) {
+    return {
+      code: 'PROXY_UNAVAILABLE',
+      message: '无法连接 Git 代理。请确认代理软件已启动、代理端口与 Git 配置一致，再重试此操作。'
+    };
+  }
+
+  if (/could not resolve host|failed to connect|could(?:n't| not) connect to server|connection (?:timed out|refused|reset)|operation timed out|network is unreachable/i.test(raw)) {
+    return {
+      code: 'NETWORK_UNAVAILABLE',
+      message: '无法连接远程仓库。请检查网络与代理设置，连接恢复后重试。'
+    };
+  }
 
   if (/does not appear to be a git repository|No remote repository specified/i.test(raw)) {
     return {
@@ -36,7 +50,7 @@ function parseGitError(err: any): { code: string; message: string } {
     };
   }
 
-  if (/no such ref was fetched|merge with the ref/i.test(raw)) {
+  if (/no such ref was fetched|merge with the ref|couldn't find remote ref/i.test(raw)) {
     return {
       code: 'NO_REMOTE_REF',
       message: '远程仓库尚未存在该分支（可能远程分支为 main 或尚未推送该分支），建议先执行「推送」将当前分支发布到远程。'
@@ -262,11 +276,9 @@ gitOpsRouter.post('/:id/pull', async (req, res) => {
 
         try {
           output = await runGitCommand(repoPath, ['pull', targetRemote, currentBranch]);
-        } catch {
-          return res.status(400).json({
-            code: 'NO_REMOTE_BRANCH',
-            error: `远程仓库 ${targetRemote} 尚未存在分支「${currentBranch}」。请先执行「推送」将该分支发布到远程。`
-          });
+        } catch (retryErr) {
+          const parsed = parseGitError(retryErr);
+          return res.status(400).json({ code: parsed.code, error: parsed.message });
         }
       } else {
         const parsed = parseGitError(pullErr);
@@ -301,7 +313,11 @@ gitOpsRouter.post('/:id/push', async (req, res) => {
     let output: string;
     try {
       output = await runGitCommand(repoPath, ['push']);
-    } catch {
+    } catch (initialPushErr) {
+      const parsed = parseGitError(initialPushErr);
+      if (parsed.code === 'PROXY_UNAVAILABLE' || parsed.code === 'NETWORK_UNAVAILABLE') {
+        return res.status(400).json({ code: parsed.code, error: parsed.message });
+      }
       const branchOut = await runGitCommand(repoPath, ['branch', '--show-current']).catch(() => '');
       const currentBranch = branchOut.trim() || 'master';
       const hasOrigin = remotes.some(r => r.name === 'origin');

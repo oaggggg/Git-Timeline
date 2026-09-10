@@ -77,13 +77,12 @@ export const InteractiveTour: React.FC<InteractiveTourProps> = ({ isOpen, onClos
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
-  // Update target rect when current step changes or on window resize
-  const updateTargetRect = () => {
+  // Resolve the target from the requested step, never from a stale effect closure.
+  const updateTargetRect = (stepIndex = currentStep) => {
     if (!isOpen) return;
-    const step = TOUR_STEPS[currentStep];
+    const step = TOUR_STEPS[stepIndex];
     const el = document.querySelector(step.targetSelector);
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
       const rect = el.getBoundingClientRect();
       setTargetRect(rect);
     } else {
@@ -93,25 +92,26 @@ export const InteractiveTour: React.FC<InteractiveTourProps> = ({ isOpen, onClos
   };
 
   useEffect(() => {
-    if (isOpen) {
-      setCurrentStep(0);
-      // Small timeout to allow render
-      const t = setTimeout(updateTargetRect, 80);
-      return () => clearTimeout(t);
-    }
+    if (!isOpen) return;
+    setCurrentStep(0);
+    setTargetRect(null);
   }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
 
-    const t = setTimeout(updateTargetRect, 100);
-    window.addEventListener('resize', updateTargetRect);
-    window.addEventListener('scroll', updateTargetRect, true);
+    let frameId = requestAnimationFrame(() => updateTargetRect(currentStep));
+    const refresh = () => {
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(() => updateTargetRect(currentStep));
+    };
+    window.addEventListener('resize', refresh);
+    window.addEventListener('scroll', refresh, true);
 
     return () => {
-      clearTimeout(t);
-      window.removeEventListener('resize', updateTargetRect);
-      window.removeEventListener('scroll', updateTargetRect, true);
+      cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', refresh);
+      window.removeEventListener('scroll', refresh, true);
     };
   }, [currentStep, isOpen]);
 
