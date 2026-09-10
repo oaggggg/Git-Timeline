@@ -14,7 +14,7 @@
 
 ## 效果展示
 
-![image-20260910211455880](C:\Users\糕糕糕糕糕\AppData\Roaming\Typora\typora-user-images\image-20260910211455880.png)
+![Git-Timeline 主界面预览](image/preview.png)
 
 ---
 
