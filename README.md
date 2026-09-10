@@ -1,4 +1,4 @@
-﻿# Git Timeline Viewer (Git-Timeline)
+﻿# Git-Timeline
 
 让 Git 提交更简单更美观。一款专注于本地 Git 历史可视化查看、代码审查与高频 Git 操作的现代化全栈 Web 应用。基于 React 18、Vite、Express 与 TypeScript 构建，采用直观优美的时间轴瀑布流设计，无缝集成多仓库管理、内联 Diff 比对、代码作者全景、历史回退（Reset/Revert）与 GitHub 发布协作。
 
