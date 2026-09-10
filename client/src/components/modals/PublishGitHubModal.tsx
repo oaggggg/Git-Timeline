@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../../context/ToastContext';
 import { fetchRemotes, publishToGitHub, gitPush } from '../../services/api';
 import { GitRemoteItem } from '../../types';
+import { GithubIcon } from '../common/GithubIcon';
 import { 
-  Globe, 
   ExternalLink, 
   ArrowUpRight, 
   X, 
@@ -139,7 +139,7 @@ export const PublishGitHubModal: React.FC<PublishGitHubModalProps> = ({
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-[#30363d]">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center shadow-xs">
-                  <Globe className="w-4 h-4" />
+                  <GithubIcon className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">

@@ -10,6 +10,7 @@ import { CreateBranchTagModal } from '../modals/CreateBranchTagModal';
 import { CreatePrModal } from '../modals/CreatePrModal';
 import { ConfirmActionModal } from '../modals/ConfirmActionModal';
 import { InteractiveTour } from '../common/InteractiveTour';
+import { GithubIcon } from '../common/GithubIcon';
 import { ThemeSlider } from './ThemeSlider';
 import { 
   GitBranch, 
@@ -17,7 +18,6 @@ import {
   GitPullRequest,
   ArrowDownToLine,
   ArrowUpFromLine,
-  Globe,
   Tag,
   Archive,
   ArchiveRestore,
@@ -533,7 +533,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="hidden xl:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs whitespace-nowrap shrink-0"
               title="发布或同步到 GitHub"
             >
-              <Globe className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <GithubIcon className="w-3.5 h-3.5 text-slate-800 dark:text-slate-200 shrink-0" />
               <span className="whitespace-nowrap">发布到 GitHub</span>
             </motion.button>
 
@@ -588,7 +588,7 @@ export const Header: React.FC<HeaderProps> = ({
                         }}
                         className="w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
                       >
-                        <Globe className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <GithubIcon className="w-4 h-4 text-slate-800 dark:text-slate-200 shrink-0 mt-0.5" />
                         <div>
                           <div className="font-semibold text-xs">发布到 GitHub (Publish)</div>
                           <div className="text-[10px] text-slate-400 dark:text-[#8b949e]">远程托管：将本地仓库推送到 GitHub 远程</div>
