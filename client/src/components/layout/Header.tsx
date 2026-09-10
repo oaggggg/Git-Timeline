@@ -727,7 +727,7 @@ export const Header: React.FC<HeaderProps> = ({
                       handleCloseSearch();
                     }
                   }}
-                  className="w-full h-8 pl-8 pr-3 text-xs rounded-full bg-slate-100/90 dark:bg-[#0d1117] border border-indigo-500/70 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:outline-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-xs focus:ring-2 focus:ring-indigo-500/15"
+                  className="w-full h-8 pl-8 pr-3 text-xs rounded-full bg-slate-100/90 dark:bg-[#0d1117] border border-indigo-500/70 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:outline-none focus:ring-0 ring-0 shadow-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
               </motion.div>
             )}

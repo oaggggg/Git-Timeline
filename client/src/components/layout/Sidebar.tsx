@@ -13,8 +13,7 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Clock,
-  Loader2,
-  X
+  Loader2
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -83,7 +82,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo, isOpeningRepo = fa
           )}
           <motion.button
             whileTap={{ scale: 0.9 }}
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => {
+              if (!collapsed) {
+                setFilterQuery('');
+              }
+              setCollapsed(!collapsed);
+            }}
             title={collapsed ? '展开工作区' : '折叠工作区'}
             className="p-2 rounded-2xl hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-500 dark:text-[#8b949e] transition-colors shrink-0"
           >
@@ -127,21 +131,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo, isOpeningRepo = fa
                 placeholder="快速过滤仓库..."
                 value={filterQuery}
                 onChange={e => setFilterQuery(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Escape') {
+                    setFilterQuery('');
+                    (e.target as HTMLInputElement).blur();
+                  } else if (e.key === 'Enter') {
+                    const firstMatch = [...starredRepos, ...otherRepos][0];
+                    if (firstMatch) {
+                      selectRepo(firstMatch.id);
+                      setFilterQuery('');
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }
+                }}
+                onBlur={() => {
+                  setTimeout(() => {
+                    setFilterQuery('');
+                  }, 200);
+                }}
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck="false"
-                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-full bg-slate-100/90 dark:bg-[#0d1117] border border-slate-200/80 dark:border-[#30363d] focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:ring-2 focus:ring-indigo-500/20 outline-none text-slate-800 dark:text-slate-200 placeholder-slate-400 transition-all shadow-2xs"
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-full bg-slate-100/90 dark:bg-[#0d1117] border border-slate-200/80 dark:border-[#30363d] focus:border-indigo-500 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0d1117] focus:outline-none outline-none focus:ring-0 ring-0 shadow-none text-slate-800 dark:text-slate-200 placeholder-slate-400 transition-colors"
               />
-              {filterQuery && (
-                <button
-                  type="button"
-                  onClick={() => setFilterQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                  title="清空过滤"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -217,7 +229,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo, isOpeningRepo = fa
     return (
       <div
         key={repo.id}
-        onClick={() => selectRepo(repo.id)}
+        onClick={() => {
+          selectRepo(repo.id);
+          setFilterQuery('');
+        }}
         title={`${repo.name}\n${repo.path}`}
         className={`group relative flex items-center rounded-2xl cursor-pointer transition-all p-2.5 gap-3 ${
           isActive
