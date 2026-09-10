@@ -36,6 +36,23 @@ export async function openRepoViaDialog(): Promise<{
   return handleResponse(res);
 }
 
+export interface DirectoryBrowseResult {
+  currentPath: string;
+  parentPath: string | null;
+  isRoot: boolean;
+  currentIsGit: boolean;
+  drives: string[];
+  directories: { name: string; path: string; isGit: boolean }[];
+}
+
+export async function browseDirectories(targetPath?: string): Promise<DirectoryBrowseResult> {
+  const url = targetPath
+    ? `${BASE_URL}/repos/fs/browse?path=${encodeURIComponent(targetPath)}`
+    : `${BASE_URL}/repos/fs/browse`;
+  const res = await fetch(url);
+  return handleResponse(res);
+}
+
 export async function deleteRepo(id: string): Promise<{ success: boolean; activeRepoId: string | null }> {
   const res = await fetch(`${BASE_URL}/repos/${id}`, {
     method: 'DELETE'

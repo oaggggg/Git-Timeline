@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import path from 'path';
+import fs from 'fs';
 import { loadConfig, saveConfig, generateRepoId } from '../store/config.js';
 import { isValidGitRepo, runGitCommand } from '../git/cli.js';
 import { scanForGitRepos } from '../git/scanner.js';
@@ -222,6 +223,95 @@ reposRouter.post('/open-folder', async (req, res) => {
     await saveConfig(config);
 
     res.status(201).json({ repo: newRepo, activeRepoId: id });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Helper to get system drives
+function getSystemDrives(): string[] {
+  if (process.platform === 'win32') {
+    return 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+      .split('')
+      .map(d => `${d}:\\`)
+      .filter(d => {
+        try {
+          return fs.existsSync(d);
+        } catch {
+          return false;
+        }
+      });
+  }
+  return ['/'];
+}
+
+// GET /api/repos/fs/browse - In-app visual directory browser
+reposRouter.get('/fs/browse', async (req, res) => {
+  try {
+    const drives = getSystemDrives();
+    const config = await loadConfig();
+    const activeRepo = config.repositories.find(r => r.id === config.activeRepoId);
+
+    let targetPath = String(req.query.path || '').trim();
+    if (!targetPath) {
+      if (activeRepo) {
+        targetPath = path.dirname(activeRepo.path);
+      } else {
+        targetPath = drives[0] || 'C:\\';
+      }
+    }
+
+    const resolved = path.resolve(targetPath);
+    if (!fs.existsSync(resolved)) {
+      return res.status(404).json({ error: `路径不存在: ${resolved}` });
+    }
+
+    const stat = fs.statSync(resolved);
+    if (!stat.isDirectory()) {
+      return res.status(400).json({ error: `路径不是文件夹: ${resolved}` });
+    }
+
+    const entries = fs.readdirSync(resolved, { withFileTypes: true });
+    const directories: { name: string; path: string; isGit: boolean }[] = [];
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name.startsWith('$') || entry.name === 'System Volume Information') continue;
+
+      const fullPath = path.join(resolved, entry.name);
+      let isGit = false;
+      try {
+        isGit = fs.existsSync(path.join(fullPath, '.git'));
+      } catch {}
+
+      directories.push({
+        name: entry.name,
+        path: fullPath,
+        isGit
+      });
+    }
+
+    // Sort: Git repos first, then alphabetical
+    directories.sort((a, b) => {
+      if (a.isGit && !b.isGit) return -1;
+      if (!a.isGit && b.isGit) return 1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
+
+    const parsed = path.parse(resolved);
+    const isRoot = resolved.toLowerCase() === parsed.root.toLowerCase();
+    const parentPath = isRoot ? null : path.dirname(resolved);
+
+    const currentIsGit = fs.existsSync(path.join(resolved, '.git'));
+
+    res.json({
+      currentPath: resolved,
+      parentPath,
+      isRoot,
+      currentIsGit,
+      drives,
+      directories
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

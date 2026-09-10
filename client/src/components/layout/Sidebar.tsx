@@ -55,22 +55,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo }) => {
       className="h-screen flex flex-col border-r select-none z-20 bg-white dark:bg-[#161b22] border-slate-200/80 dark:border-[#30363d] text-slate-800 dark:text-[#e6edf3] shrink-0 shadow-xs overflow-hidden"
     >
       {/* Header */}
-      <div className="h-16 px-3.5 flex items-center justify-between border-b border-slate-200/80 dark:border-[#30363d] overflow-hidden whitespace-nowrap">
-        <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="p-2 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 shadow-xs shrink-0">
-            <FolderGit2 className="w-5 h-5" />
-          </div>
-          {!collapsed && (
+      <div
+        className={`h-16 flex items-center border-b border-slate-200/80 dark:border-[#30363d] overflow-hidden whitespace-nowrap transition-all ${
+          collapsed ? 'justify-center px-0' : 'justify-between px-3.5'
+        }`}
+      >
+        {!collapsed && (
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <div className="p-2 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 shadow-xs shrink-0">
+              <FolderGit2 className="w-5 h-5" />
+            </div>
             <span className="font-bold text-sm tracking-tight truncate whitespace-nowrap">
               Git Timeline
             </span>
-          )}
-        </div>
+          </div>
+        )}
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={() => setCollapsed(!collapsed)}
           title={collapsed ? '展开工作区' : '折叠工作区'}
-          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-500 dark:text-[#8b949e] transition-colors shrink-0"
+          className="p-2 rounded-2xl hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-500 dark:text-[#8b949e] transition-colors shrink-0"
         >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </motion.button>
@@ -146,16 +150,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo }) => {
   function renderRepoItem(repo: typeof repositories[0]) {
     const isActive = activeRepo?.id === repo.id;
 
+    if (collapsed) {
+      return (
+        <div
+          key={repo.id}
+          onClick={() => selectRepo(repo.id)}
+          title={`${repo.name}\n${repo.path}`}
+          className={`w-10 h-10 mx-auto flex items-center justify-center rounded-2xl cursor-pointer text-xs font-bold transition-all ${
+            isActive
+              ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-500/30'
+              : 'bg-slate-100/90 dark:bg-[#21262d] text-slate-600 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-[#30363d]'
+          }`}
+        >
+          {repo.name.substring(0, 2).toUpperCase()}
+        </div>
+      );
+    }
+
     return (
       <div
         key={repo.id}
         onClick={() => selectRepo(repo.id)}
         title={`${repo.name}\n${repo.path}`}
-        className={`group relative flex items-center rounded-2xl cursor-pointer transition-all ${
-          collapsed
-            ? 'w-10 h-10 mx-auto justify-center'
-            : 'p-2.5 gap-3'
-        } ${
+        className={`group relative flex items-center rounded-2xl cursor-pointer transition-all p-2.5 gap-3 ${
           isActive
             ? 'bg-indigo-50/90 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-200 font-medium ring-1 ring-indigo-500/20 shadow-xs'
             : 'hover:bg-slate-100/80 dark:hover:bg-[#21262d]/70 text-slate-700 dark:text-[#c9d1d9]'
@@ -171,52 +188,50 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenRepo }) => {
           {repo.name.substring(0, 2).toUpperCase()}
         </div>
 
-        {!collapsed && (
-          <div className="flex-1 min-w-0 overflow-hidden">
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-xs font-semibold truncate" title={repo.name}>
-                {repo.name}
-              </span>
-              <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
-                <motion.button
-                  whileTap={{ scale: 1.3 }}
-                  onClick={e => handleToggleStar(e, repo.id, repo.name, repo.isStarred)}
-                  title={repo.isStarred ? '取消收藏' : '置顶收藏'}
-                  className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-slate-200/60 dark:hover:bg-[#30363d]"
-                >
-                  <Star
-                    className={`w-3 h-3 ${
-                      repo.isStarred ? 'fill-amber-400 text-amber-400' : 'text-slate-400'
-                    }`}
-                  />
-                </motion.button>
-                <button
-                  onClick={e => handleRemoveRepo(e, repo.id, repo.name)}
-                  title="移除"
-                  className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-rose-100 dark:hover:bg-rose-950/50 text-slate-400 hover:text-rose-500"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-[#8b949e]">
-              <span className="flex items-center gap-1 truncate max-w-[110px] font-medium">
-                <GitBranch className="w-3 h-3 shrink-0 text-indigo-500" />
-                <span className="truncate">{repo.currentBranch}</span>
-              </span>
-              {repo.lastCommitDate && (
-                <span className="flex items-center gap-0.5 shrink-0 text-[10px] text-slate-400">
-                  <Clock className="w-2.5 h-2.5" />
-                  {formatDistanceToNow(new Date(repo.lastCommitDate), {
-                    addSuffix: true,
-                    locale: zhCN
-                  })}
-                </span>
-              )}
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-xs font-semibold truncate" title={repo.name}>
+              {repo.name}
+            </span>
+            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+              <motion.button
+                whileTap={{ scale: 1.3 }}
+                onClick={e => handleToggleStar(e, repo.id, repo.name, repo.isStarred)}
+                title={repo.isStarred ? '取消收藏' : '置顶收藏'}
+                className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-slate-200/60 dark:hover:bg-[#30363d]"
+              >
+                <Star
+                  className={`w-3 h-3 ${
+                    repo.isStarred ? 'fill-amber-400 text-amber-400' : 'text-slate-400'
+                  }`}
+                />
+              </motion.button>
+              <button
+                onClick={e => handleRemoveRepo(e, repo.id, repo.name)}
+                title="移除"
+                className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-rose-100 dark:hover:bg-rose-950/50 text-slate-400 hover:text-rose-500"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
             </div>
           </div>
-        )}
+
+          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-[#8b949e]">
+            <span className="flex items-center gap-1 truncate max-w-[110px] font-medium">
+              <GitBranch className="w-3 h-3 shrink-0 text-indigo-500" />
+              <span className="truncate">{repo.currentBranch}</span>
+            </span>
+            {repo.lastCommitDate && (
+              <span className="flex items-center gap-0.5 shrink-0 text-[10px] text-slate-400">
+                <Clock className="w-2.5 h-2.5" />
+                {formatDistanceToNow(new Date(repo.lastCommitDate), {
+                  addSuffix: true,
+                  locale: zhCN
+                })}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
