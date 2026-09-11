@@ -229,13 +229,27 @@ gitOpsRouter.post('/:id/commit', async (req, res) => {
 
     let pushOutput: string | undefined;
     if (push) {
-      try {
-        pushOutput = await runGitCommand(repoPath, ['push']);
-      } catch {
-        const branchOut = await runGitCommand(repoPath, ['branch', '--show-current']);
-        const currentBranch = branchOut.trim() || 'master';
-        pushOutput = await runGitCommand(repoPath, ['push', '-u', 'origin', currentBranch]);
+      const branchOut = await runGitCommand(repoPath, ['branch', '--show-current']);
+      const currentBranch = branchOut.trim();
+      if (!currentBranch) {
+        return res.status(400).json({
+          code: 'DETACHED_HEAD',
+          error: '当前处于 detached HEAD 状态，请先切换到一个本地分支后再推送。'
+        });
       }
+      const remotes = await getRepoRemotes(repoPath);
+      if (remotes.length === 0) {
+        return res.status(400).json({
+          code: 'NO_REMOTE',
+          error: '提交已保存在本地，但当前仓库没有配置远程仓库。'
+        });
+      }
+      const targetRemote = remotes.some(remote => remote.name === 'origin')
+        ? 'origin'
+        : remotes[0].name;
+      pushOutput = await runGitCommand(repoPath, [
+        'push', '--set-upstream', targetRemote, currentBranch
+      ]);
     }
 
     res.json({
@@ -314,28 +328,40 @@ gitOpsRouter.post('/:id/push', async (req, res) => {
       });
     }
 
-    let output: string;
-    try {
-      output = await runGitCommand(repoPath, ['push']);
-    } catch (initialPushErr) {
-      const parsed = parseGitError(initialPushErr);
-      if (parsed.code === 'PROXY_UNAVAILABLE' || parsed.code === 'NETWORK_UNAVAILABLE') {
-        return res.status(400).json({ code: parsed.code, error: parsed.message });
-      }
-      const branchOut = await runGitCommand(repoPath, ['branch', '--show-current']).catch(() => '');
-      const currentBranch = branchOut.trim() || 'master';
-      const hasOrigin = remotes.some(r => r.name === 'origin');
-      const targetRemote = hasOrigin ? 'origin' : remotes[0].name;
-
-      try {
-        output = await runGitCommand(repoPath, ['push', '-u', targetRemote, currentBranch]);
-      } catch (pushErr: any) {
-        const parsed = parseGitError(pushErr);
-        return res.status(400).json({ code: parsed.code, error: parsed.message });
-      }
+    const branchOut = await runGitCommand(repoPath, ['branch', '--show-current']).catch(() => '');
+    const currentBranch = branchOut.trim();
+    if (!currentBranch) {
+      return res.status(400).json({
+        code: 'DETACHED_HEAD',
+        error: '当前处于 detached HEAD 状态，请先切换到一个本地分支后再推送。'
+      });
     }
 
-    res.json({ success: true, output });
+    const hasOrigin = remotes.some(r => r.name === 'origin');
+    const targetRemote = hasOrigin ? 'origin' : remotes[0].name;
+    let output: string;
+    try {
+      // Always name the remote and branch so first-time pushes establish tracking.
+      output = await runGitCommand(repoPath, ['push', '--set-upstream', targetRemote, currentBranch]);
+    } catch (pushErr: any) {
+      const parsed = parseGitError(pushErr);
+      return res.status(400).json({ code: parsed.code, error: parsed.message });
+    }
+
+    const remoteHead = await runGitCommand(repoPath, [
+      'ls-remote', '--heads', targetRemote, currentBranch
+    ]).catch(() => '');
+    const localHead = await runGitCommand(repoPath, ['rev-parse', 'HEAD']);
+    const remoteHeadHash = remoteHead.trim().split(/\s+/)[0];
+    if (!remoteHeadHash || remoteHeadHash !== localHead.trim()) {
+      return res.status(502).json({
+        code: 'PUSH_NOT_VERIFIED',
+        error: '推送命令已返回，但无法确认远程分支已更新，请稍后刷新后重试。',
+        output
+      });
+    }
+
+    res.json({ success: true, output, remote: targetRemote, branch: currentBranch });
   } catch (err: any) {
     const parsed = parseGitError(err);
     res.status(500).json({ code: parsed.code, error: parsed.message });
