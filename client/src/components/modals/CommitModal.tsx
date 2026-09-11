@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../../context/ToastContext';
-import { fetchRepoStatus, commitChanges } from '../../services/api';
+import { fetchRepoStatus, commitChanges, stageFiles, fetchWorktreeDiff } from '../../services/api';
 import { GitStatusResult, GitFileStatus } from '../../types';
 import { 
   GitCommit, 
@@ -45,6 +45,10 @@ export const CommitModal: React.FC<CommitModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const [stagingPath, setStagingPath] = useState<string | null>(null);
+  const [diff, setDiff] = useState<string | null>(null);
+  const [diffStaged, setDiffStaged] = useState(false);
+  const [isLoadingDiff, setIsLoadingDiff] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -99,6 +103,33 @@ export const CommitModal: React.FC<CommitModalProps> = ({
       next.add(path);
     }
     setSelectedPaths(next);
+  };
+
+  const handleStageToggle = async (file: GitFileStatus) => {
+    setStagingPath(file.path);
+    setError(null);
+    try {
+      await stageFiles(repoId, [file.path], !file.staged);
+      const nextStatus = await fetchRepoStatus(repoId);
+      setStatus(nextStatus);
+    } catch (err: any) {
+      setError(err.message || '更新文件暂存状态失败');
+    } finally {
+      setStagingPath(null);
+    }
+  };
+
+  const handleLoadDiff = async (staged: boolean) => {
+    setIsLoadingDiff(true);
+    setDiffStaged(staged);
+    try {
+      const result = await fetchWorktreeDiff(repoId, staged);
+      setDiff(result.diff);
+    } catch (err: any) {
+      setError(err.message || '加载工作区 Diff 失败');
+    } finally {
+      setIsLoadingDiff(false);
+    }
   };
 
   const handleApplyPrefix = (prefix: string) => {
@@ -289,11 +320,67 @@ export const CommitModal: React.FC<CommitModalProps> = ({
                               {file.path}
                             </span>
                           </div>
-                          {getStatusBadge(file.status)}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={event => {
+                                event.stopPropagation();
+                                handleStageToggle(file);
+                              }}
+                              disabled={stagingPath === file.path}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-semibold border transition-colors disabled:opacity-60 ${
+                                file.staged
+                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                  : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-300 dark:border-[#30363d] dark:bg-[#161b22] dark:text-slate-400'
+                              }`}
+                              title={file.staged ? '取消暂存此文件' : '暂存此文件'}
+                            >
+                              {stagingPath === file.path ? '处理中...' : file.staged ? '已暂存' : '暂存'}
+                            </button>
+                            {getStatusBadge(file.status)}
+                          </div>
                         </div>
                       );
                     })}
                   </div>
+                )}
+              </div>
+
+              {/* Commit Message Section */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    工作区 Diff
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleLoadDiff(false)}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
+                        diff !== null && !diffStaged
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-100 text-slate-600 dark:bg-[#21262d] dark:text-slate-300'
+                      }`}
+                    >
+                      未暂存
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleLoadDiff(true)}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
+                        diff !== null && diffStaged
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-100 text-slate-600 dark:bg-[#21262d] dark:text-slate-300'
+                      }`}
+                    >
+                      已暂存
+                    </button>
+                  </div>
+                </div>
+                {diff !== null && (
+                  <pre className="max-h-40 overflow-auto rounded-xl bg-[#0d1117] p-3 text-[10px] leading-relaxed text-slate-300 whitespace-pre-wrap font-mono">
+                    {isLoadingDiff ? '正在加载 Diff...' : diff || '当前没有代码差异'}
+                  </pre>
                 )}
               </div>
 

@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRepo } from '../../context/RepoContext';
 import { useToast } from '../../context/ToastContext';
-import { BranchItem, CommitFilterOptions } from '../../types';
-import { gitPull, gitPush, gitStash, fetchRepoStatus, gitUndoLastCommit, gitDiscardChanges, deleteBranch } from '../../services/api';
+import { BranchItem, CommitFilterOptions, GitStatusResult } from '../../types';
+import { gitFetch, gitPull, gitPush, gitStash, fetchRepoStatus, gitUndoLastCommit, gitDiscardChanges, deleteBranch } from '../../services/api';
 import { CommitModal } from '../modals/CommitModal';
 import { PublishGitHubModal } from '../modals/PublishGitHubModal';
 import { CreateBranchTagModal } from '../modals/CreateBranchTagModal';
@@ -63,8 +63,10 @@ export const Header: React.FC<HeaderProps> = ({
   const [branchTagModalMode, setBranchTagModalMode] = useState<'branch' | 'tag'>('branch');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
   const [pendingChangesCount, setPendingChangesCount] = useState<number>(0);
+  const [repoStatus, setRepoStatus] = useState<GitStatusResult | null>(null);
   const [isUndoModalOpen, setIsUndoModalOpen] = useState(false);
   const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false);
   const [isUndoing, setIsUndoing] = useState(false);
@@ -178,9 +180,21 @@ export const Header: React.FC<HeaderProps> = ({
       return;
     }
     fetchRepoStatus(activeRepo.id)
-      .then(res => setPendingChangesCount(res.files.length))
+      .then(res => {
+        setRepoStatus(res);
+        setPendingChangesCount(res.files.length);
+      })
       .catch(() => {});
   }, [activeRepo?.id, isLoading]);
+
+  const refreshRepoStatus = async () => {
+    if (!activeRepo) return;
+    try {
+      const status = await fetchRepoStatus(activeRepo.id);
+      setRepoStatus(status);
+      setPendingChangesCount(status.files.length);
+    } catch {}
+  };
 
   const handlePull = async () => {
     if (!activeRepo || isPulling) return;
@@ -191,6 +205,7 @@ export const Header: React.FC<HeaderProps> = ({
       dismissToast(loadingToastId);
       showToast(res.output?.trim() || '已成功拉取最新代码', 'success');
       onRefresh();
+      await refreshRepoStatus();
     } catch (err: any) {
       dismissToast(loadingToastId);
       const isNoRemote = err.code === 'NO_REMOTE' || /尚未配置远程仓库/.test(err.message || '');
@@ -205,6 +220,23 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const handleFetch = async () => {
+    if (!activeRepo || isFetching) return;
+    setIsFetching(true);
+    const loadingToastId = showToast('正在获取远程引用 (git fetch)...', 'loading');
+    try {
+      const res = await gitFetch(activeRepo.id);
+      dismissToast(loadingToastId);
+      showToast(res.output?.trim() || '远程引用已更新', 'success');
+      await refreshRepoStatus();
+    } catch (err: any) {
+      dismissToast(loadingToastId);
+      showToast(err.message || '获取远程更新失败', 'error');
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
   const handlePush = async () => {
     if (!activeRepo || isPushing) return;
     setIsPushing(true);
@@ -214,6 +246,7 @@ export const Header: React.FC<HeaderProps> = ({
       dismissToast(loadingToastId);
       showToast(res.output?.trim() || '已成功推送到远程', 'success');
       onRefresh();
+      await refreshRepoStatus();
     } catch (err: any) {
       dismissToast(loadingToastId);
       const isNoRemote = err.code === 'NO_REMOTE' || /尚未配置远程仓库/.test(err.message || '');
@@ -502,6 +535,29 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </motion.button>
 
+            {repoStatus && (
+              <span
+                className={`hidden lg:inline-flex items-center gap-1 px-2 py-1.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${
+                  repoStatus.ahead > 0
+                    ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+                    : repoStatus.behind > 0
+                      ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+                      : repoStatus.files.length > 0
+                        ? 'bg-slate-100 text-slate-600 dark:bg-[#21262d] dark:text-slate-300'
+                        : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                }`}
+                title={`当前分支：${repoStatus.branch}`}
+              >
+                {repoStatus.ahead > 0
+                  ? `领先 ${repoStatus.ahead}`
+                  : repoStatus.behind > 0
+                    ? `落后 ${repoStatus.behind}`
+                    : repoStatus.files.length > 0
+                      ? `未提交 ${repoStatus.files.length}`
+                      : '已同步'}
+              </span>
+            )}
+
             {/* Pull Button */}
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -512,6 +568,18 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <ArrowDownToLine className={`w-3.5 h-3.5 text-indigo-500 shrink-0 ${isPulling ? 'animate-bounce' : ''}`} />
               <span className="whitespace-nowrap">{isPulling ? '拉取中...' : '拉取最新'}</span>
+            </motion.button>
+
+            {/* Fetch Button */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handleFetch}
+              disabled={isFetching}
+              className="hidden xl:inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-[#21262d] hover:bg-slate-200 dark:hover:bg-[#30363d] text-slate-700 dark:text-slate-200 transition-colors shadow-xs whitespace-nowrap shrink-0"
+              title="获取远程引用，不合并到当前工作区"
+            >
+              <RotateCw className={`w-3.5 h-3.5 text-indigo-500 shrink-0 ${isFetching ? 'animate-spin' : ''}`} />
+              <span className="whitespace-nowrap">{isFetching ? '获取中...' : 'Fetch'}</span>
             </motion.button>
 
             {/* Push Button */}
@@ -768,11 +836,9 @@ export const Header: React.FC<HeaderProps> = ({
           isOpen={isCommitModalOpen}
           repoId={activeRepo.id}
           onClose={() => setIsCommitModalOpen(false)}
-          onSuccess={() => {
+          onSuccess={async () => {
             onRefresh();
-            fetchRepoStatus(activeRepo.id)
-              .then(res => setPendingChangesCount(res.files.length))
-              .catch(() => {});
+            await refreshRepoStatus();
           }}
         />
 

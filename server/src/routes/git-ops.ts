@@ -188,6 +188,20 @@ gitOpsRouter.get('/:id/status', async (req, res) => {
       }
     }
 
+    // Use Git's commit graph for accurate sync counts when an upstream exists.
+    try {
+      const syncOut = await runGitCommand(repoPath, [
+        'rev-list', '--left-right', '--count', '@{upstream}...HEAD'
+      ]);
+      const [remoteCount, localCount] = syncOut.trim().split(/\s+/).map(Number);
+      if (Number.isFinite(remoteCount) && Number.isFinite(localCount)) {
+        behind = remoteCount;
+        ahead = localCount;
+      }
+    } catch {
+      // Detached branches and branches without an upstream use status output above.
+    }
+
     const result: GitStatusResult = {
       branch,
       ahead,
@@ -199,6 +213,55 @@ gitOpsRouter.get('/:id/status', async (req, res) => {
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/repos/:id/stage - Stage or unstage selected files
+gitOpsRouter.post('/:id/stage', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const repoPath = await getRepoPathById(id);
+    if (!repoPath) {
+      return res.status(404).json({ error: '仓库不存在或路径无效' });
+    }
+
+    const { files, staged = true } = req.body;
+    if (!Array.isArray(files) || files.length === 0 || files.some(file => typeof file !== 'string' || !file.trim())) {
+      return res.status(400).json({ error: '请提供至少一个有效文件路径' });
+    }
+
+    const cleanFiles = files.map(file => file.trim());
+    if (staged) {
+      await runGitCommand(repoPath, ['add', '--', ...cleanFiles]);
+    } else {
+      await runGitCommand(repoPath, ['reset', 'HEAD', '--', ...cleanFiles]);
+    }
+
+    res.json({ success: true, staged: Boolean(staged), files: cleanFiles });
+  } catch (err: any) {
+    const parsed = parseGitError(err);
+    res.status(500).json({ code: parsed.code, error: parsed.message });
+  }
+});
+
+// GET /api/repos/:id/worktree-diff - Diff for uncommitted or staged changes
+gitOpsRouter.get('/:id/worktree-diff', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const repoPath = await getRepoPathById(id);
+    if (!repoPath) {
+      return res.status(404).json({ error: '仓库不存在或路径无效' });
+    }
+
+    const staged = req.query.staged === 'true';
+    const diff = await runGitCommand(repoPath, staged
+      ? ['diff', '--cached', '--']
+      : ['diff', '--']);
+
+    res.json({ staged, diff });
+  } catch (err: any) {
+    const parsed = parseGitError(err);
+    res.status(500).json({ code: parsed.code, error: parsed.message });
   }
 });
 
@@ -308,6 +371,30 @@ gitOpsRouter.post('/:id/pull', async (req, res) => {
   } catch (err: any) {
     const parsed = parseGitError(err);
     res.status(500).json({ code: parsed.code, error: parsed.message });
+  }
+});
+
+// POST /api/repos/:id/fetch - Refresh remote references without merging
+gitOpsRouter.post('/:id/fetch', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const repoPath = await getRepoPathById(id);
+    if (!repoPath) return res.status(404).json({ error: '仓库不存在或路径无效' });
+
+    const remotes = await getRepoRemotes(repoPath);
+    if (remotes.length === 0) {
+      return res.status(400).json({
+        code: 'NO_REMOTE',
+        error: '当前仓库尚未配置远程仓库。'
+      });
+    }
+
+    const remote = remotes.some(item => item.name === 'origin') ? 'origin' : remotes[0].name;
+    const output = await runGitCommand(repoPath, ['fetch', '--prune', remote]);
+    res.json({ success: true, remote, output });
+  } catch (err: any) {
+    const parsed = parseGitError(err);
+    res.status(400).json({ code: parsed.code, error: parsed.message });
   }
 });
 

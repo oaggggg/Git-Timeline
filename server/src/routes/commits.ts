@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { loadConfig } from '../store/config.js';
 import { parseCommits, getCommitDiff, getBranches, getTags, getAuthors } from '../git/parser.js';
-import { isValidGitRepo } from '../git/cli.js';
+import { isValidGitRepo, runGitCommand } from '../git/cli.js';
 
 export const commitsRouter = Router();
 
@@ -91,5 +91,24 @@ commitsRouter.get('/:id/commits/:hash/diff', async (req, res) => {
     res.json(diffData);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/repos/:id/commits/compare?base=<hash>&head=<hash>
+commitsRouter.get('/:id/commits/compare', async (req, res) => {
+  try {
+    const repoPath = await getRepoPathById(req.params.id);
+    if (!repoPath) return res.status(404).json({ error: '仓库不存在或路径无效' });
+
+    const base = String(req.query.base || '').trim();
+    const head = String(req.query.head || '').trim();
+    if (!/^[0-9a-f]{4,40}$/i.test(base) || !/^[0-9a-f]{4,40}$/i.test(head)) {
+      return res.status(400).json({ error: 'base 和 head 必须是合法提交 Hash' });
+    }
+
+    const diff = await runGitCommand(repoPath, ['diff', '--no-ext-diff', base, head, '--']);
+    res.json({ base, head, diff });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || '提交对比失败' });
   }
 });

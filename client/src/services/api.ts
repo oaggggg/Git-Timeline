@@ -152,6 +152,16 @@ export async function fetchCommitDiff(repoId: string, hash: string): Promise<Dif
   return data;
 }
 
+export async function compareCommits(
+  repoId: string,
+  base: string,
+  head: string
+): Promise<{ base: string; head: string; diff: string }> {
+  const params = new URLSearchParams({ base, head });
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/commits/compare?${params}`);
+  return handleResponse(res);
+}
+
 export function prefetchCommitDiff(repoId: string, hash: string): void {
   const key = `${repoId}:${hash}`;
   if (!diffCache.has(key)) {
@@ -166,6 +176,28 @@ export function getCachedCommitDiff(repoId: string, hash: string): DiffData | un
 // Git Status & Working Tree
 export async function fetchRepoStatus(repoId: string): Promise<GitStatusResult> {
   const res = await fetch(`${BASE_URL}/repos/${repoId}/status`);
+  return handleResponse(res);
+}
+
+export async function stageFiles(
+  repoId: string,
+  files: string[],
+  staged = true
+): Promise<{ success: boolean; staged: boolean; files: string[] }> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/stage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ files, staged })
+  });
+  return handleResponse(res);
+}
+
+export async function fetchWorktreeDiff(
+  repoId: string,
+  staged = false
+): Promise<{ staged: boolean; diff: string }> {
+  const query = staged ? '?staged=true' : '';
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/worktree-diff${query}`);
   return handleResponse(res);
 }
 
@@ -187,6 +219,11 @@ export async function gitPull(repoId: string): Promise<{ success: boolean; outpu
   const res = await fetch(`${BASE_URL}/repos/${repoId}/pull`, {
     method: 'POST'
   });
+  return handleResponse(res);
+}
+
+export async function gitFetch(repoId: string): Promise<{ success: boolean; remote: string; output: string }> {
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/fetch`, { method: 'POST' });
   return handleResponse(res);
 }
 

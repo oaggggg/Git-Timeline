@@ -30,9 +30,10 @@ interface CommitCardProps {
   repoId: string;
   commit: CommitItem;
   onRefresh?: () => void;
+  onCompare?: (commit: CommitItem) => void;
 }
 
-export const CommitCard: React.FC<CommitCardProps> = React.memo(({ repoId, commit, onRefresh }) => {
+export const CommitCard: React.FC<CommitCardProps> = React.memo(({ repoId, commit, onRefresh, onCompare }) => {
   const { showToast, dismissToast } = useToast();
   const [copied, setCopied] = useState(false);
   const [isDiffExpanded, setIsDiffExpanded] = useState(false);
@@ -371,6 +372,21 @@ export const CommitCard: React.FC<CommitCardProps> = React.memo(({ repoId, commi
                         </div>
                       </button>
 
+                      {/* Copy Hash */}
+                      {onCompare && (
+                        <button
+                          onClick={() => {
+                            setShowActionMenu(false);
+                            onCompare(commit);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-[#21262d] text-slate-700 dark:text-slate-200 transition-colors"
+                        >
+                          <GitCommit className="w-4 h-4 text-indigo-500 shrink-0" />
+                          <span className="text-xs">选择此提交进行对比</span>
+                        </button>
+                      )}
+
+                      {/* Copy Hash */}
                       {/* Copy Hash */}
                       <button
                         onClick={(e) => {

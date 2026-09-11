@@ -7,6 +7,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { DateGroupHeader, DateFilterRange, DATE_FILTER_OPTIONS } from './components/timeline/DateGroupHeader';
 import { CommitCard } from './components/timeline/CommitCard';
+import { CompareCommitsModal } from './components/modals/CompareCommitsModal';
 import { fetchCommits, fetchBranches, fetchAuthors } from './services/api';
 import { CommitItem, BranchItem, TagItem, CommitFilterOptions, AuthorItem } from './types';
 import { groupCommitsByDate } from './utils/date';
@@ -40,6 +41,8 @@ function MainTimeline() {
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isOpeningRepo, setIsOpeningRepo] = useState(false);
+  const [compareBase, setCompareBase] = useState<CommitItem | null>(null);
+  const [comparePair, setComparePair] = useState<{ base: CommitItem; head: CommitItem } | null>(null);
 
   const handleOpenNativeRepo = async () => {
     if (isOpeningRepo) return;
@@ -197,6 +200,20 @@ function MainTimeline() {
       ...newOptions,
       skip: 0
     }));
+  };
+
+  const handleCompareCommit = (commit: CommitItem) => {
+    if (!compareBase) {
+      setCompareBase(commit);
+      showToast(`已选择 ${commit.shortHash}，请选择另一条提交进行对比`, 'info');
+      return;
+    }
+    if (compareBase.hash === commit.hash) {
+      showToast('请选择另一条不同的提交', 'error');
+      return;
+    }
+    setComparePair({ base: compareBase, head: commit });
+    setCompareBase(null);
   };
 
   const handleDateFilterChange = (range: DateFilterRange) => {
@@ -396,6 +413,7 @@ function MainTimeline() {
                           repoId={activeRepo.id}
                           commit={commit}
                           onRefresh={handleRefresh}
+                          onCompare={handleCompareCommit}
                         />
                       ))}
                     </div>
@@ -429,6 +447,14 @@ function MainTimeline() {
           </div>
         </main>
       </div>
+      {comparePair && activeRepo && (
+        <CompareCommitsModal
+          repoId={activeRepo.id}
+          base={comparePair.base}
+          head={comparePair.head}
+          onClose={() => setComparePair(null)}
+        />
+      )}
     </div>
   );
 }
