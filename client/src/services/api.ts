@@ -16,13 +16,23 @@ import {
 const BASE_URL = '/api';
 
 async function handleResponse<T>(res: Response): Promise<T> {
+  const contentType = res.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json');
+  const body = res.status === 204
+    ? null
+    : isJson
+      ? await res.json().catch(() => null)
+      : await res.text().catch(() => '');
+
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ error: res.statusText }));
+    const errorData = typeof body === 'object' && body !== null
+      ? body as { error?: string; code?: string }
+      : { error: String(body || res.statusText) };
     const err: any = new Error(errorData.error || `Request failed with status ${res.status}`);
     err.code = errorData.code;
     throw err;
   }
-  return res.json();
+  return body as T;
 }
 
 export async function fetchRepos(): Promise<{ repositories: RepoInfo[]; activeRepoId: string | null }> {
@@ -102,7 +112,8 @@ export async function scanRepos(rootPath: string, maxDepth = 3): Promise<{ repos
 
 export async function fetchCommits(
   repoId: string,
-  options: CommitFilterOptions = {}
+  options: CommitFilterOptions = {},
+  signal?: AbortSignal
 ): Promise<{ commits: CommitItem[]; hasMore: boolean }> {
   const params = new URLSearchParams();
   if (options.branch) params.set('branch', options.branch);
@@ -114,7 +125,7 @@ export async function fetchCommits(
   if (options.skip !== undefined) params.set('skip', String(options.skip));
   if (options.limit !== undefined) params.set('limit', String(options.limit));
 
-  const res = await fetch(`${BASE_URL}/repos/${repoId}/commits?${params.toString()}`);
+  const res = await fetch(`${BASE_URL}/repos/${repoId}/commits?${params.toString()}`, { signal });
   return handleResponse(res);
 }
 

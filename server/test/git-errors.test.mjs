@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseGitError } from '../dist/routes/git-ops.js';
+import { isCommitHash, parseGitError } from '../dist/routes/git-ops.js';
+
+test('commit hash validation accepts hexadecimal hashes only', () => {
+  assert.equal(isCommitHash('abcd'), true);
+  assert.equal(isCommitHash('0123456789abcdef0123456789abcdef01234567'), true);
+  assert.equal(isCommitHash(''), false);
+  assert.equal(isCommitHash('HEAD~1'), false);
+  assert.equal(isCommitHash('--hard'), false);
+  assert.equal(isCommitHash('abc/def'), false);
+});
 
 const cases = [
   ["fatal: unable to access 'https://github.com/oaggggg/Git-Timeline/': Failed to connect to github.com:443 or proxy 127.0.0.1 after 2060 ms: Could not connect to server", 'PROXY_UNAVAILABLE'],

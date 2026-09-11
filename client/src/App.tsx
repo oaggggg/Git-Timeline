@@ -61,6 +61,8 @@ function MainTimeline() {
 
 
   const observerTarget = useRef<HTMLDivElement | null>(null);
+  const commitsRequestId = useRef(0);
+  const commitsAbortController = useRef<AbortController | null>(null);
 
   const loadAuthors = useCallback(async (repoId: string) => {
     setIsLoadingAuthors(true);
@@ -112,6 +114,10 @@ function MainTimeline() {
     async (isLoadMore = false) => {
       if (!activeRepo) return;
 
+      const requestId = ++commitsRequestId.current;
+      commitsAbortController.current?.abort();
+      const abortController = new AbortController();
+      commitsAbortController.current = abortController;
       const skip = isLoadMore ? commits.length : 0;
       if (isLoadMore) {
         setIsLoadingMore(true);
@@ -125,7 +131,9 @@ function MainTimeline() {
           ...filterOptions,
           skip,
           limit: PAGE_SIZE
-        });
+        }, abortController.signal);
+
+        if (requestId !== commitsRequestId.current) return;
 
         if (isLoadMore) {
           setCommits(prev => [...prev, ...res.commits]);
@@ -134,10 +142,14 @@ function MainTimeline() {
         }
         setHasMore(res.hasMore);
       } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+        if (requestId !== commitsRequestId.current) return;
         setError(err.message || '加载提交记录失败');
       } finally {
-        setIsLoading(false);
-        setIsLoadingMore(false);
+        if (requestId === commitsRequestId.current) {
+          setIsLoading(false);
+          setIsLoadingMore(false);
+        }
       }
     },
     [activeRepo?.id, filterOptions, commits.length]

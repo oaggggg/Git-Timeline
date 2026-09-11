@@ -36,11 +36,14 @@ export async function loadConfig(): Promise<ConfigData> {
 }
 
 export async function saveConfig(config: ConfigData): Promise<void> {
-  cachedConfig = config;
+  const tempFile = `${CONFIG_FILE}.${process.pid}.tmp`;
   try {
-    await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+    await fs.writeFile(tempFile, JSON.stringify(config, null, 2), 'utf-8');
+    await fs.rename(tempFile, CONFIG_FILE);
+    cachedConfig = config;
   } catch (err) {
     console.error('Failed to write config file:', err);
+    await fs.unlink(tempFile).catch(() => {});
   }
 }
 

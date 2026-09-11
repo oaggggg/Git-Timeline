@@ -8,6 +8,7 @@
     "dev:client": "pnpm --filter git-timeline-client dev",
     "dev": "concurrently --kill-others-on-fail -n \"SERVER,CLIENT\" -c \"blue,green\" \"pnpm --filter git-timeline-server dev\" \"pnpm --filter git-timeline-client dev\"",
     "build": "pnpm --filter git-timeline-client build && pnpm --filter git-timeline-server build",
+    "check": "pnpm build && pnpm --filter git-timeline-server test",
     "start": "pnpm --filter git-timeline-server start"
   },
   "devDependencies": {

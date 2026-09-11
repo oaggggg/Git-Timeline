@@ -19,16 +19,16 @@ export async function runGitCommand(repoPath: string, args: string[]): Promise<s
     const { stdout } = await execFileAsync('git', finalArgs, {
       cwd: repoPath,
       maxBuffer: 50 * 1024 * 1024, // 50MB buffer
+      timeout: 30_000,
+      killSignal: 'SIGTERM',
       windowsHide: true,
       encoding: 'utf-8'
     });
     return stdout;
   } catch (err: any) {
-    if (err.stdout) {
-      // Some git commands exit with code 1 on diff differences or warnings but output valid data
-      return err.stdout;
-    }
-    const errorMsg = err.stderr || err.message || String(err);
+    const errorMsg = err.killed && err.signal
+      ? `命令执行超时（${err.signal}）`
+      : err.stderr || err.message || String(err);
     throw new Error(`Git error [${args.join(' ')}]: ${errorMsg}`);
   }
 }

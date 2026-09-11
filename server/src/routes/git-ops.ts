@@ -12,6 +12,10 @@ import {
 
 export const gitOpsRouter = Router();
 
+export function isCommitHash(value: string): boolean {
+  return /^[0-9a-f]{4,40}$/i.test(value);
+}
+
 export function parseGitError(err: any): { code: string; message: string } {
   const raw = String(err?.message || err || '');
 
@@ -629,7 +633,7 @@ gitOpsRouter.delete('/:id/branches/:branchName', async (req, res) => {
     }
 
     // Delete local branch: -d for safe, -D for force
-    const deleteArgs = ['branch', force ? '-D' : '-d', cleanBranch];
+    const deleteArgs = ['branch', force ? '-D' : '-d', '--', cleanBranch];
     await runGitCommand(repoPath, deleteArgs);
 
     res.json({ success: true, branchName: cleanBranch, force });
@@ -710,9 +714,15 @@ gitOpsRouter.post('/:id/reset', async (req, res) => {
     if (!targetHash) {
       return res.status(400).json({ error: '目标提交 Hash 不能为空' });
     }
+    if (!isCommitHash(targetHash)) {
+      return res.status(400).json({ error: '目标提交 Hash 格式无效' });
+    }
 
-    const validModes = ['soft', 'mixed', 'hard'];
-    const resetMode = validModes.includes(mode) ? mode : 'mixed';
+    const validModes = ['soft', 'mixed', 'hard'] as const;
+    if (!validModes.includes(mode)) {
+      return res.status(400).json({ error: '无效的回退模式，必须是 soft、mixed 或 hard' });
+    }
+    const resetMode = mode;
 
     const output = await runGitCommand(repoPath, ['reset', `--${resetMode}`, targetHash]);
 
@@ -741,6 +751,9 @@ gitOpsRouter.post('/:id/revert', async (req, res) => {
     const targetHash = String(commitHash || '').trim();
     if (!targetHash) {
       return res.status(400).json({ error: '目标提交 Hash 不能为空' });
+    }
+    if (!isCommitHash(targetHash)) {
+      return res.status(400).json({ error: '目标提交 Hash 格式无效' });
     }
 
     const output = await runGitCommand(repoPath, ['revert', '--no-edit', targetHash]);
